@@ -38,7 +38,7 @@ link_directories (
         )
 	
 add_subdirectory (src)
-#add_subdirectory (examples)
+add_subdirectory (examples)
 
 #if (Test)
 #  add_subdirectory (tests)
