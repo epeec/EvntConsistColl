@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define SUCCESS_OR_DIE(f...)                                            \
+#define SUCCESS_OR_DIE(f)                                               \
   do                                                                    \
   {                                                                     \
     const gaspi_return_t r = f;                                         \
