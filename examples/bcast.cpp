@@ -6,7 +6,7 @@
 #include "success_or_die.h"
 #include "queue.h"
 
-int main(int argc, char *argv[])
+int main( )
 {
   static const int VLEN = 8;
   
@@ -38,12 +38,13 @@ int main(int argc, char *argv[])
     }
 
   gaspi_queue_id_t queue_id = 0;
-  gaspi_bcast(segment_id, 0, VLEN * sizeof(double), GASPI_TYPE_DOUBLE, root, queue_id, GASPI_BLOCK);
+  gaspi_bcast(segment_id, 0, VLEN, GASPI_TYPE_DOUBLE, root, queue_id);
 
   for (int j = 0; j < VLEN; ++j)
-    {
+  {
       printf("rank %d rcv elem %d: %f \n", iProc, j, src_array[j] );
-    }
+  }
+  printf("\n");
   
   wait_for_flush_queues();
  

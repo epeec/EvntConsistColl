@@ -12,27 +12,33 @@ gaspi_bcast (gaspi_segment_id_t const buf,
 	     gaspi_number_t const elem_cnt,
 	     const gaspi_datatype_t type,
 	     const gaspi_number_t root,
-             const gaspi_queue_id_t queue_id,
-	     const gaspi_timeout_t timeout_ms)
+             const gaspi_queue_id_t queue_id)
 {
-	
-    gaspi_notification_id_t data_available = 0;
+
     gaspi_rank_t iProc, nProc; 
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
-    printf("nProc = %d\n", nProc);
+
+    gaspi_notification_id_t data_available = 0;
+
+    // get size of type, see GASPI.h for details
+    gaspi_number_t type_size = 0;
+    if (type >= 3) 
+	type_size = 8;
+    else
+	type_size = 4;
   
     if (iProc == root) {	
-	    for(int k = 0; k < nProc; k++) {
+	    for(uint k = 0; k < nProc; k++) {
 		if (k == root) 
 			continue;
 
 		//SUCCESS_OR_DIE(gaspi_write(buf, offset, k, buf, offset, size, 0, GASPI_BLOCK));
 		SUCCESS_OR_DIE
 			    ( gaspi_write_notify
-			      ( buf, offset, k
-			      , buf, offset, elem_cnt
-			      , data_available, root+1
+			      ( buf, offset*type_size, k
+			      , buf, offset*type_size, elem_cnt*type_size
+			      , data_available, root+1 // +1 so that the value is not zero
 			      , queue_id, GASPI_BLOCK
 			      )
 			    );
