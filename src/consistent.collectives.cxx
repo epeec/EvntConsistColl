@@ -34,7 +34,6 @@ gaspi_bcast (gaspi_segment_id_t const buf,
 		if (k == root) 
 			continue;
 
-		//SUCCESS_OR_DIE(gaspi_write(buf, offset, k, buf, offset, size, 0, GASPI_BLOCK));
 		SUCCESS_OR_DIE
 			    ( gaspi_write_notify
 			      ( buf, offset*type_size, k
@@ -82,7 +81,6 @@ gaspi_bcast (gaspi_segment_id_t const buf,
 		if (k == root) 
 			continue;
 
-		//SUCCESS_OR_DIE(gaspi_write(buf, offset, k, buf, offset, size, 0, GASPI_BLOCK));
 		SUCCESS_OR_DIE
 			    ( gaspi_write_notify
 			      ( buf, offset*type_size, k
