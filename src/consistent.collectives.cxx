@@ -52,6 +52,8 @@ gaspi_bcast (gaspi_segment_id_t const buf,
     return;
 }
 
+// eventually consistent broadcast
+//   initial version
 void
 gaspi_bcast (gaspi_segment_id_t const buf,
 	     gaspi_number_t const offset,
