@@ -4,10 +4,10 @@
 1. INTRODUCTION
 ===============
 
-ConsistColl library provides some implementations of eventually consistent collectives such as reduce.
+ConsistColl library provides some implementations of eventually consistent collectives such as broadcast.
 
-Eventually consistent collectives operate with a fration of data (e.g. 50%). They are based 
-on GASPI and extend its API to cover more than the classic allreduce.
+Eventually consistent collectives operate with a fraction of data (e.g. 60%). They are based 
+on GASPI and extend its API to cover more than the GASPI-native allreduce.
 
 
 2. INSTALLATION
