@@ -1,7 +1,7 @@
 
 #include <cmath>
 
-#include <consistent.collectives.hxx>
+#include <gaspi.collectives.hxx>
 
 #include "success_or_die.h"
 #include "queue.h"
