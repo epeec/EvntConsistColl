@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.6)
-project (ConsistColl)
+project (EvntlConsistColl)
 
 include(GNUInstallDirs)
 
@@ -26,12 +26,10 @@ link_directories ( ${GPI2_LIBRARY_DIRS} )
 
 include_directories (
         ${GPI2_INCLUDE_DIRS} 
-#        ${GASPI_CXX_ROOT}/include
         )
 
 link_directories (
         ${GPI2_LIBRARY_DIRS} 
-#        ${GASPI_CXX_ROOT}/src
         )
 	
 add_subdirectory (src)

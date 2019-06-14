@@ -1,25 +1,25 @@
 
 #include <cmath>
 
-#include <gaspi.collectives.hxx>
+#include <evntl.consist.coll.hxx>
 
 #include "success_or_die.h"
 #include "queue.h"
 #include "waitsome.h"
 
-  /** Broadcast collective operation.
-   *
-   *
-   * @param buf The segment with data for the operation
-   * @param offset The offset within the segment
-   * @param elem_cnt The number of data elements
-   * @param datatyp Type of data (see gaspi_datatype_t)
-   * @param root The process id of the root
-   * @param queue_id The queue id
-   *
-   * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
-   * error, GASPI_TIMEOUT in case of timeout.
-   */
+/** Broadcast collective operation.
+ *
+ *
+ * @param buf The segment with data for the operation
+ * @param offset The offset within the segment
+ * @param elem_cnt The number of data elements
+ * @param datatyp Type of data (see gaspi_datatype_t)
+ * @param root The process id of the root
+ * @param queue_id The queue id
+ *
+ * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
+ * error, GASPI_TIMEOUT in case of timeout.
+ */
 gaspi_return_t
 gaspi_bcast (gaspi_segment_id_t const buf,
 	     gaspi_number_t const offset,
@@ -64,20 +64,20 @@ gaspi_bcast (gaspi_segment_id_t const buf,
     return GASPI_SUCCESS;
 }
 
-  /** Broadcast collective operation.
-   *
-   *
-   * @param buf The segment with data for the operation
-   * @param offset The offset within the segment
-   * @param elem_cnt The number of data elements
-   * @param datatyp Type of data (see gaspi_datatype_t)
-   * @param threshol The threshol for the amount of data to be broadcasted. The value is in [0, 1]
-   * @param root The process id of the root
-   * @param queue_id The queue id
-   *
-   * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
-   * error, GASPI_TIMEOUT in case of timeout.
-   */
+/** Broadcast collective operation.
+ *
+ *
+ * @param buf The segment with data for the operation
+ * @param offset The offset within the segment
+ * @param elem_cnt The number of data elements
+ * @param datatyp Type of data (see gaspi_datatype_t)
+ * @param threshol The threshol for the amount of data to be broadcasted. The value is in [0, 1]
+ * @param root The process id of the root
+ * @param queue_id The queue id
+ *
+ * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
+ * error, GASPI_TIMEOUT in case of timeout.
+ */
 gaspi_return_t
 gaspi_bcast (gaspi_segment_id_t const buf,
 	     gaspi_number_t const offset,
@@ -123,21 +123,21 @@ gaspi_bcast (gaspi_segment_id_t const buf,
     return GASPI_SUCCESS;
 }
 
-  /** Reduce collective operation.
-   *
-   *
-   * @param buffer_send The buffer with data for the operation.
-   * @param buffer_receive The buffer to receive the result of the operation.
-   * @param elem_cnt The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
-   * @param operation The type of operations (see gaspi_operation_t).
-   * @param datatype Type of data (see gaspi_datatype_t).
-   * @param root The process id of the root
-   * @param group The group involved in the operation.
-   * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
-   *
-   * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
-   * error, GASPI_TIMEOUT in case of timeout.
-   */
+/** Reduce collective operation.
+ *
+ *
+ * @param buffer_send The buffer with data for the operation.
+ * @param buffer_receive The buffer to receive the result of the operation.
+ * @param elem_cnt The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
+ * @param operation The type of operations (see gaspi_operation_t).
+ * @param datatype Type of data (see gaspi_datatype_t).
+ * @param root The process id of the root
+ * @param group The group involved in the operation.
+ * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
+ *
+ * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
+ * error, GASPI_TIMEOUT in case of timeout.
+ */
 // TODO: I assume that we deal with all ranks [0,n-1] however it would be better to have them as in gaspi in rank_grp array
 gaspi_return_t 
 gaspi_reduce (const gaspi_pointer_t buffer_send,
