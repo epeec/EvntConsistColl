@@ -1,7 +1,7 @@
 
 #include <GASPI.h>
 
-#include "consistent.collectives.hxx"
+#include "evntl.consist.coll.hxx"
 
 #include "success_or_die.h"
 #include "queue.h"
@@ -38,7 +38,7 @@ void test_bcast(const int VLEN, gaspi_segment_id_t const segment_id){
 }
 
 
-// testing evntually consistent gaspi bcast
+// testing eventually consistent gaspi bcast
 void test_consist_bcast(const int VLEN, gaspi_segment_id_t const segment_id, const double threshold){
  
   gaspi_rank_t iProc, nProc, root = 0;
