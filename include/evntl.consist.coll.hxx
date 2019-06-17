@@ -27,6 +27,39 @@ gaspi_bcast (gaspi_segment_id_t const buf,
 	     //const gaspi_timeout_t timeout_ms);
 	     //const gaspi_group_t g,
 
+// structure for binomial algs
+typedef struct{
+    gaspi_rank_t parent;
+    gaspi_rank_t *children;
+    bool isactive;
+} bst_struct;
+
+/** Broadcast collective operation using binomial tree.
+ *
+ *
+ * @param buf The segment with data for the operation
+ * @param elem_cnt The number of data elements
+ * @param datatyp Type of data (see gaspi_datatype_t)
+ * @param root The process id of the root
+ * @param timeout_ws Time out: ms, GASPI_BLOCK or GASPI_TEST
+ *
+ * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
+ * error, GASPI_TIMEOUT in case of timeout.
+ */
+//gaspi_return_t
+//gaspi_bcast (gaspi_pointer_t const buf,
+//	     const gaspi_number_t elem_cnt,
+//	     const gaspi_datatype_t type,
+//	     const gaspi_number_t root,
+//	     const gaspi_timeout_t timeout_ms);
+gaspi_return_t
+gaspi_bcast_bst (gaspi_segment_id_t const buf,
+	     gaspi_number_t const offset,
+	     const gaspi_number_t elem_cnt,
+	     const gaspi_datatype_t type,
+	     const gaspi_number_t root,
+	     const gaspi_timeout_t timeout_ms);
+
 /** Broadcast collective operation.
  *
  *

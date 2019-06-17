@@ -26,13 +26,14 @@ void test_bcast(const int VLEN, gaspi_segment_id_t const segment_id){
 
   gaspi_queue_id_t queue_id = 0;
 
-  gaspi_bcast(segment_id, 0, VLEN, GASPI_TYPE_DOUBLE, root, queue_id);
+  //gaspi_bcast(segment_id, 0, VLEN, GASPI_TYPE_DOUBLE, root, queue_id);
+  gaspi_bcast_bst(segment_id, 0, VLEN, GASPI_TYPE_DOUBLE, root, GASPI_BLOCK);
 
-  for (int j = 0; j < VLEN; ++j)
-  {
-      printf("rank %d rcv elem %d: %f \n", iProc, j, src_array[j] );
-  }
-  printf("\n");
+//  for (int j = 0; j < VLEN; ++j)
+//  {
+//      printf("rank %d rcv elem %d: %f \n", iProc, j, src_array[j] );
+//  }
+//  printf("\n");
   
   wait_for_flush_queues();
 }
@@ -88,7 +89,7 @@ int main( )
     );
 
   gaspi_double const threshold = 0.6;
-  test_consist_bcast(VLEN, segment_id, threshold); 
+  //test_consist_bcast(VLEN, segment_id, threshold); 
 
   test_bcast(VLEN, segment_id); 
  
