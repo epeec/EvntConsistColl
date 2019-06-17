@@ -63,7 +63,7 @@ gaspi_bcast (gaspi_segment_id_t const buf,
     return GASPI_SUCCESS;
 }
 
-/** Broadcast collective operation using binomial tree.
+/** Broadcast collective operation that uses binomial tree.
  *
  *
  * @param buf The segment with data for the operation
@@ -92,6 +92,9 @@ gaspi_bcast_bst (gaspi_segment_id_t const buf,
     gaspi_rank_t iProc, nProc; 
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
+
+    if (nProc <= 1)
+        return GASPI_SUCCESS;
 
     gaspi_notification_id_t data_available = 0;
 
@@ -125,32 +128,28 @@ gaspi_bcast_bst (gaspi_segment_id_t const buf,
         }
     }
 
-    printf("%d has parent %d\n", iProc, bst.parent);
-    printf("%d has %d kids\n", iProc, children_count);
-
     for (int i = 0; i < ceil(log2(nProc)); i++) {
-        if (bst.isactive) {
-            if ((iProc == root) || (j > log2(iProc))) {
-                int dst = iProc + pow(2,i);
-                if ( dst < nProc ) {
-                    SUCCESS_OR_DIE
-                        ( gaspi_write_notify
-                          ( buf, doffset, dst
-                          , buf, doffset, dsize
-                          , data_available, iProc+1 // +1 so that the value is not zero
-                          , 0, GASPI_BLOCK
-                          )
-                        );
-                }
-            } 
+        if ((iProc == root) || (i > log2(iProc))) {
+            int dst = iProc + pow(2,i);
+            if ( dst < nProc ) {
+                SUCCESS_OR_DIE
+                    ( gaspi_write_notify
+                      ( buf, doffset, dst
+                      , buf, doffset, dsize
+                      , data_available, iProc+1 // +1 so that the value is not zero
+                      , 0, GASPI_BLOCK
+                      )
+                    );
 
-            // another variant
-            //else {
-                // recv
-            //}
+                  //printf("proc=%d\t dst=%d\n", iProc, dst);
+            }
+        } 
             
-            if ((iProc != root) && (bst.parent <= j)) {
+        if (bst.isactive) {
+            if ((iProc != root) && (bst.parent <= i)) {
+                //printf("proc=%d\t parent=%d\n", iProc, bst.parent);
   	            wait_or_die ( buf, data_available, bst.parent+1 );  
+                bst.isactive = false;
             }
         }
     }
@@ -158,7 +157,7 @@ gaspi_bcast_bst (gaspi_segment_id_t const buf,
     return GASPI_SUCCESS;
 }
 
-/** Broadcast collective operation.
+/** Eventually consistent broadcast collective operation that is based on (n-1) straight gaspi_write
  *
  *
  * @param buf The segment with data for the operation
@@ -212,6 +211,93 @@ gaspi_bcast (gaspi_segment_id_t const buf,
 	    }
     } else {
     	wait_or_die ( buf, data_available, root+1 );  
+    }
+
+    return GASPI_SUCCESS;
+}
+
+/** Eventually consistent broadcast collective operation that uses binomial tree.
+ *
+ *
+ * @param buf The segment with data for the operation
+ * @param elem_cnt The number of data elements
+ * @param datatyp Type of data (see gaspi_datatype_t)
+ * @param threshol The threshol for the amount of data to be broadcasted. The value is in [0, 1]
+ * @param root The process id of the root
+ * @param timeout_ws Time out: ms, GASPI_BLOCK or GASPI_TEST
+ *
+ * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
+ * error, GASPI_TIMEOUT in case of timeout.
+ */
+gaspi_return_t
+gaspi_bcast_bst (gaspi_segment_id_t const buf,
+	     gaspi_number_t const offset,
+	     const gaspi_number_t elem_cnt,
+	     const gaspi_datatype_t type,
+	     const gaspi_double threshold,
+	     const gaspi_number_t root,
+	     const gaspi_timeout_t timeout_ms)
+{
+    gaspi_rank_t iProc, nProc; 
+    SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+    SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
+
+    if (nProc <= 1)
+        return GASPI_SUCCESS;
+
+    gaspi_notification_id_t data_available = 0;
+
+    // get size of type, see GASPI.h for details
+    gaspi_number_t type_size = 0;
+    if (type >= 3) 
+    	type_size = 8;
+    else
+	    type_size = 4;
+    gaspi_number_t dsize = ceil(elem_cnt * threshold) * type_size;
+    gaspi_number_t doffset = offset * type_size;
+
+    // compute parent
+    bst_struct bst;
+    int j = 1;
+    while (j <= iProc)
+        j = j * 2;
+    bst.parent = iProc - j / 2;
+    bst.children = (gaspi_rank_t *) valloc(sizeof(gaspi_rank_t) * (ceil(log2(nProc)) - 1));
+    bst.isactive = true;
+
+    // compute children
+    int children_count = 0;
+    for (int i = 0; i < ceil(log2(nProc)); i++) {
+        if ((iProc == root) || (i > log2(iProc))) {
+            int k = iProc + pow(2,i);
+            if ( k < nProc ) {
+                bst.children[children_count] = k;
+                children_count++;
+            }
+        }
+    }
+
+    for (int i = 0; i < ceil(log2(nProc)); i++) {
+        if ((iProc == root) || (i > log2(iProc))) {
+            int dst = iProc + pow(2,i);
+            if ( dst < nProc ) {
+                SUCCESS_OR_DIE
+                    ( gaspi_write_notify
+                      ( buf, doffset, dst
+                      , buf, doffset, dsize
+                      , data_available, iProc+1 // +1 so that the value is not zero
+                      , 0, GASPI_BLOCK
+                      )
+                    );
+            }
+        } 
+            
+        if (bst.isactive) {
+            if ((iProc != root) && (bst.parent <= i)) {
+  	            wait_or_die ( buf, data_available, bst.parent+1 );  
+                bst.isactive = false;
+            }
+        }
     }
 
     return GASPI_SUCCESS;
