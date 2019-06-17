@@ -6,7 +6,7 @@
 #include "success_or_die.h"
 #include "queue.h"
 
-// testing regular gaspi bcast
+// testing gaspi bcast that is based on (n-1) straigt gaspi_write
 void test_bcast(const int VLEN, gaspi_segment_id_t const segment_id){
   
   gaspi_rank_t iProc, nProc, root = 0;
@@ -37,9 +37,37 @@ void test_bcast(const int VLEN, gaspi_segment_id_t const segment_id){
   wait_for_flush_queues();
 }
 
+// testing gaspi bcast that is based on binomial tree
+void test_bcast_bst(const int VLEN, gaspi_segment_id_t const segment_id){
+  
+  gaspi_rank_t iProc, nProc, root = 0;
+  SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+  SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
+    
+  gaspi_pointer_t array;
+  SUCCESS_OR_DIE( gaspi_segment_ptr (segment_id, &array) );
+ 
+  double * src_array = (double *)(array);
 
-// testing eventually consistent gaspi bcast
-void test_consist_bcast(const int VLEN, gaspi_segment_id_t const segment_id, const double threshold){
+  for (int j = 0; j < VLEN; ++j)
+  {
+      if (iProc == root) 
+          src_array[j]= (double)( iProc * VLEN + j );
+  }
+
+  gaspi_bcast_bst(segment_id, 0, VLEN, GASPI_TYPE_DOUBLE, root, GASPI_BLOCK);
+
+  for (int j = 0; j < VLEN; ++j)
+  {
+      printf("rank %d rcv elem %d: %f \n", iProc, j, src_array[j] );
+  }
+  printf("\n");
+  
+  wait_for_flush_queues();
+}
+
+// testing eventually consistent gaspi bcast that is based on (n-1) straight gaspi_writes
+void test_evnt_consist_bcast(const int VLEN, gaspi_segment_id_t const segment_id, const double threshold){
  
   gaspi_rank_t iProc, nProc, root = 0;
   SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -69,6 +97,35 @@ void test_consist_bcast(const int VLEN, gaspi_segment_id_t const segment_id, con
   wait_for_flush_queues();
 }
 
+// testing eventually consistent gaspi bcast that is based on binomial tree
+void test_evnt_consist_bcast_bst(const int VLEN, gaspi_segment_id_t const segment_id, const double threshold){
+ 
+  gaspi_rank_t iProc, nProc, root = 0;
+  SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+  SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
+    
+  gaspi_pointer_t array;
+  SUCCESS_OR_DIE( gaspi_segment_ptr (segment_id, &array) );
+ 
+  double * src_array = (double *)(array);
+
+  for (int j = 0; j < VLEN; ++j)
+  {
+      if (iProc == root) 
+          src_array[j]= (double)( iProc * VLEN + j );
+  }
+
+  gaspi_bcast_bst(segment_id, 0, VLEN, GASPI_TYPE_DOUBLE, threshold, root, GASPI_BLOCK);
+
+  for (int j = 0; j < VLEN; ++j)
+  {
+      printf("rank %d rcv elem %d: %f \n", iProc, j, src_array[j] );
+  }
+  printf("\n");
+  
+  wait_for_flush_queues();
+}
+
 
 int main( )
 {
@@ -87,10 +144,11 @@ int main( )
       )
     );
 
-  gaspi_double const threshold = 0.6;
-  test_consist_bcast(VLEN, segment_id, threshold); 
+  gaspi_double const threshold = 0.4;
+  //test_evnt_consist_bcast(VLEN, segment_id, threshold); 
+  test_evnt_consist_bcast_bst(VLEN, segment_id, threshold); 
 
-  test_bcast(VLEN, segment_id); 
+  //test_bcast_bst(VLEN, segment_id); 
  
   SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
 
