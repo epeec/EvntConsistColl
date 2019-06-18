@@ -16,13 +16,15 @@ void test_reduce(const int VLEN, gaspi_segment_id_t const segment_id){
   SUCCESS_OR_DIE( gaspi_segment_ptr (segment_id, &array) );
  
   double * src_array = (double *)(array);
+  double * rcv_array = src_array + VLEN;
 
   for (int j = 0; j < VLEN; ++j)
   {
-      src_array[j]= (double)( iProc * VLEN + j );
+      src_array[j] = (double)( iProc * VLEN + j );
   }
 
-  gaspi_allreduce(src_array, src_array, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, GASPI_GROUP_ALL, GASPI_BLOCK);
+  //gaspi_allreduce(src_array, src_array, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, GASPI_GROUP_ALL, GASPI_BLOCK);
+  gaspi_reduce(segment_id, 0, segment_id, 0, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, 0, GASPI_GROUP_ALL, GASPI_BLOCK);
 
   for (int j = 0; j < VLEN; ++j)
   {
