@@ -5,6 +5,7 @@
 #include <evntl.consist.coll.hxx>
 
 #include "success_or_die.h"
+#include "testsome.h"
 #include "queue.h"
 #include "waitsome.h"
 
@@ -140,14 +141,11 @@ gaspi_bcast_bst (gaspi_segment_id_t const buf,
                       , 0, GASPI_BLOCK
                       )
                     );
-
-                  //printf("proc=%d\t dst=%d\n", iProc, dst);
             }
         } 
             
         if (bst.isactive) {
             if ((iProc != root) && (bst.parent <= i)) {
-                //printf("proc=%d\t parent=%d\n", iProc, bst.parent);
   	            wait_or_die ( buf, data_available, bst.parent+1 );  
                 bst.isactive = false;
             }
@@ -303,7 +301,7 @@ gaspi_bcast_bst (gaspi_segment_id_t const buf,
     return GASPI_SUCCESS;
 }
 
-/** Reduce collective operation.
+/** Reduce collective operation that implements binomial tree
  *
  *
  * @param buffer_send The buffer with data for the operation.
@@ -320,8 +318,10 @@ gaspi_bcast_bst (gaspi_segment_id_t const buf,
  */
 // TODO: I assume that we deal with all ranks [0,n-1] however it would be better to have them as in gaspi in rank_grp array
 gaspi_return_t 
-gaspi_reduce (const gaspi_pointer_t buffer_send,
-   	          gaspi_pointer_t const buffer_receive,
+gaspi_reduce (const gaspi_segment_id_t buffer_send,
+	          gaspi_number_t const offset_send,
+   	          gaspi_segment_id_t const buffer_receive,
+	          gaspi_number_t const offset_recv,
 	          const gaspi_number_t elem_cnt,
 	          const gaspi_operation_t operation,
 	          const gaspi_datatype_t type,
@@ -329,16 +329,12 @@ gaspi_reduce (const gaspi_pointer_t buffer_send,
 	          const gaspi_group_t group,
 	          const gaspi_timeout_t timeout_ms)
 {
-	gaspi_rank_t iProc, nProc; 
-	SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
-	SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
+    gaspi_rank_t iProc, nProc; 
+    SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+    SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
 
-	int tmprank, jmp, mask, lastmask, tmpdst, dst, rest;
-	lastmask = 0x1;  
-	mask = lastmask & 0x7fffffff;
-	jmp = lastmask >> 31;
-	tmprank = iProc;
-	rest = 0;
+    if (nProc <= 1)
+        return GASPI_SUCCESS;
 
     // get size of type, see GASPI.h for details
     gaspi_number_t type_size = 0;
@@ -347,52 +343,72 @@ gaspi_reduce (const gaspi_pointer_t buffer_send,
     else
 	    type_size = 4;
 
-    gaspi_number_t dsize = type_size * elem_cnt;
+    // compute parent
+    bst_struct bst;
+    int j = 1;
+    while (j <= iProc)
+        j = j * 2;
+    bst.parent = iProc - j / 2;
+    bst.children = (gaspi_rank_t *) valloc(sizeof(gaspi_rank_t) * (ceil(log2(nProc)) - 1));
+    bst.isactive = true;
 
-	while ( mask < nProc ) {
-		tmpdst = tmprank ^ mask;
-		dst = (tmpdst < rest) ? tmpdst * 2 + 1 : tmpdst + rest;
+    // compute children
+    int children_count = 0;
+    for (int i = 0; i < ceil(log2(nProc)); i++) {
+        if ((iProc == root) || (i > log2(iProc))) {
+            int k = iProc + pow(2,i);
+            if ( k < nProc ) {
+                bst.children[children_count] = k;
+                children_count++;
+            }
+        }
+    }
+    bst.children_count = children_count;
 
-		if ( jmp ) {
-			jmp = 0;
-//			goto J2;
-		}
+    for (int i = ceil(log2(nProc)) - 1; i >= 0; i--) {
+        if (bst.isactive) {
+            if ((iProc != root) && (children_count == 0) && (log2(iProc) >= i)) {
+                gaspi_notification_id_t data_available = iProc;
+                SUCCESS_OR_DIE
+                    ( gaspi_write_notify
+                      ( buffer_send, offset_send * type_size, bst.parent
+                      , buffer_receive, offset_recv * type_size, elem_cnt * type_size
+                      , data_available, bst.parent+1 // +1 so that the value is not zero
+                      , 0, GASPI_BLOCK
+                      )
+                    );
+                bst.isactive = false;
+            }
+        } 
+            
+        if (bst.isactive) {
+            if (children_count > 0) {
+                gaspi_notification_id_t id, range = pow(2, bst.children_count);
+                gaspi_notification_t val = iProc+1;
 
-        // TODO:  _gaspi_allreduce_write_and_sync(gctx, g, send_ptr, dsize, dst, bid, timeout_ms) != GASPI_SUCCESS 
-//        SUCCESS_OR_DIE
-//            ( gaspi_write_notify
-//              ( buf, 0, k
-//              , buf, , ceil(elem_cnt * threshold)*type_size
-//              , data_available, root+1 // +1 so that the value is not zero
-//              , queue_id, GASPI_BLOCK
-//              )
-//            );
-//        gaspi_notification_id_t notification = iProc;
-//        write_notify_and_wait(buffer_send, 
-//                              0,
-//                              dst,
-//                              buffer_receive,
-//                              0,
-//                              dsize,
-//                              notification,
-//                              dst,
-//                              0);
-//
-//        J2:
-//        gaspi_notification_id_t = id;
-//        gaspi_notification_t val = 1; 
-//        waitsome_and_reset(buffer_receive, 0, nProc, &id, &val);
-//        ASSERT(id >= 0);
-//        ASSERT(id <= nProc);
-//
-//        if (1) {
-//            lastmask = (mask | 0x80000000);
-//            return GASPI_TIMEOUT;
-//        }
-//        // _gaspi_sync_wait
-//        
-        mask <= 1;
-	}
+                waitsome_and_reset(buffer_receive
+                           , bst.children[0]
+                           , range
+                           , &id
+                           , &val
+                           );
+                ASSERT(id >= bst.children[0]);
+                ASSERT(id <= bst.children[bst.children_count-1]);
 
-	return GASPI_SUCCESS;
+                // reduce
+                gaspi_pointer_t src_arr, rcv_arr;
+                SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_send, &src_arr) );
+                SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_receive, &rcv_arr) );
+                double *src_array = (double *)(src_arr);
+                double *rcv_array = (double *)(rcv_arr);
+                for (j = 0; j < elem_cnt; j++) {
+                    src_array[offset_send + j] += rcv_array[offset_recv + j];
+                }
+                            
+                children_count--;
+            }
+        }
+    }
+
+    return GASPI_SUCCESS;
 }
