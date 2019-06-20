@@ -31,6 +31,7 @@ gaspi_bcast (gaspi_segment_id_t const buf,
 typedef struct{
     gaspi_rank_t parent;
     gaspi_rank_t *children;
+    gaspi_rank_t children_count = 0;
     bool isactive;
 } bst_struct;
 

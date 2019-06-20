@@ -342,9 +342,6 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
     	type_size = 8;
     else
 	    type_size = 4;
-    gaspi_number_t dsize = type_size * elem_cnt;
-    gaspi_number_t doffset_send = offset_send * type_size;
-    gaspi_number_t doffset_recv = offset_recv * type_size;
 
     // compute parent
     bst_struct bst;
@@ -366,30 +363,27 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
             }
         }
     }
-    printf("proc=%d\t numkids=%d\n", iProc, children_count);
+    bst.children_count = children_count;
 
     for (int i = ceil(log2(nProc)) - 1; i >= 0; i--) {
         if (bst.isactive) {
-            if ((iProc != root) && (log2(iProc) >= i) && (children_count == 0)) {
+            if ((iProc != root) && (children_count == 0) && (log2(iProc) >= i)) {
                 gaspi_notification_id_t data_available = iProc;
                 SUCCESS_OR_DIE
                     ( gaspi_write_notify
-                      ( buffer_send, doffset_send, bst.parent
-                      , buffer_receive, doffset_recv, dsize
+                      ( buffer_send, offset_send * type_size, bst.parent
+                      , buffer_receive, offset_recv * type_size, elem_cnt * type_size
                       , data_available, bst.parent+1 // +1 so that the value is not zero
                       , 0, GASPI_BLOCK
                       )
                     );
-                //printf("proc=%d\t dst=%d\t i=%d\t log2=%.g\n", iProc, bst.parent, i, log2(iProc));
                 bst.isactive = false;
-            } 
+            }
         } 
             
         if (bst.isactive) {
             if (children_count > 0) {
-                //printf("proc=%d\n", iProc);
-  	            //wait_or_die ( buf, data_available, bst.parent );  
-                gaspi_notification_id_t id, range = pow(2, children_count);
+                gaspi_notification_id_t id, range = pow(2, bst.children_count);
                 gaspi_notification_t val = iProc+1;
 
                 waitsome_and_reset(buffer_receive
@@ -398,9 +392,8 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
                            , &id
                            , &val
                            );
-
                 ASSERT(id >= bst.children[0]);
-                ASSERT(id <= bst.children[children_count-1]);
+                ASSERT(id <= bst.children[bst.children_count-1]);
 
                 // reduce
                 gaspi_pointer_t src_arr, rcv_arr;
