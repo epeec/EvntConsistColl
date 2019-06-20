@@ -370,7 +370,7 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
 
     for (int i = ceil(log2(nProc)) - 1; i >= 0; i--) {
         if (bst.isactive) {
-            if ((iProc != root) && (log2(iProc) >= i)) {
+            if ((iProc != root) && (log2(iProc) >= i) && (children_count == 0)) {
                 gaspi_notification_id_t data_available = iProc;
                 SUCCESS_OR_DIE
                     ( gaspi_write_notify
@@ -388,7 +388,6 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
         if (bst.isactive) {
             if (children_count > 0) {
                 //printf("proc=%d\n", iProc);
-                //children_count--;
   	            //wait_or_die ( buf, data_available, bst.parent );  
                 gaspi_notification_id_t id, range = pow(2, children_count);
                 gaspi_notification_t val = iProc+1;
@@ -403,13 +402,17 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
                 ASSERT(id >= bst.children[0]);
                 ASSERT(id <= bst.children[children_count-1]);
 
-//                // reduce
-//                gaspi_pointer_t array;
-//                SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_send, &array) );
-//                double *src_array = (double *)(array);
-//                for (j = 0; j < elem_cnt; j++) {
-//                    src_array[i] = src_array[i+elem_cnt];
-//                }
+                // reduce
+                gaspi_pointer_t src_arr, rcv_arr;
+                SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_send, &src_arr) );
+                SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_receive, &rcv_arr) );
+                double *src_array = (double *)(src_arr);
+                double *rcv_array = (double *)(rcv_arr);
+                for (j = 0; j < elem_cnt; j++) {
+                    src_array[offset_send + j] += rcv_array[offset_recv + j];
+                }
+                            
+                children_count--;
             }
         }
     }
