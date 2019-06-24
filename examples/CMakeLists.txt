@@ -9,7 +9,7 @@ target_include_directories (bcast PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 # public include directories we will use those link directories when building
 target_link_libraries (bcast 
                        LINK_PUBLIC "-static-libstdc++"
-                       EvntlConsistColl 
+                       EvntConsistColl 
 		               ${GPI2_LIBRARIES} 
 		               pthread
                        ibverbs
@@ -24,7 +24,7 @@ target_include_directories (reduce PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries (reduce 
                        LINK_PUBLIC "-static-libstdc++"
-                       EvntlConsistColl 
+                       EvntConsistColl 
 		               ${GPI2_LIBRARIES} 
 		               pthread
                        ibverbs

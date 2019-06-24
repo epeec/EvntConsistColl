@@ -2,7 +2,7 @@
 #include <cmath>
 #include <cstdlib>
 
-#include <evntl.consist.coll.hxx>
+#include <EvntConsistColl.hxx>
 
 #include "success_or_die.h"
 #include "testsome.h"

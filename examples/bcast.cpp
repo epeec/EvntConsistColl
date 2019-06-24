@@ -1,7 +1,7 @@
 
 #include <GASPI.h>
 
-#include "evntl.consist.coll.hxx"
+#include "EvntConsistColl.hxx"
 
 #include "success_or_die.h"
 #include "queue.h"
