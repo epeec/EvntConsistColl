@@ -6,7 +6,7 @@
 #include "success_or_die.h"
 #include "queue.h"
 
-// testing regular gaspi reduce
+// testing regular gaspi reduce that is based on binomial tree
 void test_reduce(const int VLEN, gaspi_segment_id_t const segment_id){
   
   gaspi_rank_t iProc;
@@ -35,6 +35,34 @@ void test_reduce(const int VLEN, gaspi_segment_id_t const segment_id){
   wait_for_flush_queues();
 }
 
+// testing eventually consistent gaspi reduce that is based on binomial tree
+void test_evnt_consist_reduce(const int VLEN, gaspi_segment_id_t const segment_id, const double threshold){
+  
+  gaspi_rank_t iProc;
+  SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+    
+  gaspi_pointer_t array;
+  SUCCESS_OR_DIE( gaspi_segment_ptr (segment_id, &array) );
+ 
+  double * src_array = (double *)(array);
+  double * rcv_array = src_array + VLEN;
+
+  for (int j = 0; j < VLEN; ++j)
+  {
+      src_array[j] = (double)( iProc * VLEN + j );
+  }
+
+  gaspi_reduce(segment_id, 0, segment_id, VLEN, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, threshold, 0, GASPI_GROUP_ALL, GASPI_BLOCK);
+
+  for (int j = 0; j < 2 * VLEN; ++j)
+  {
+      printf("rank %d rcv elem %d: %f \n", iProc, j, src_array[j] );
+  }
+  printf("\n");
+  
+  wait_for_flush_queues();
+}
+
 
 int main( )
 {
@@ -53,9 +81,10 @@ int main( )
       )
     );
 
-//  gaspi_double const threshold = 0.6;
+  gaspi_double const threshold = 0.5;
+  test_evnt_consist_reduce(VLEN, segment_id, threshold); 
 
-  test_reduce(VLEN, segment_id); 
+  //test_reduce(VLEN, segment_id); 
  
   SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
 

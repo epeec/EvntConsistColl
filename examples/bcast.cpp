@@ -145,10 +145,9 @@ int main( )
     );
 
   gaspi_double const threshold = 0.4;
-  //test_evnt_consist_bcast(VLEN, segment_id, threshold); 
   test_evnt_consist_bcast_bst(VLEN, segment_id, threshold); 
 
-  //test_bcast_bst(VLEN, segment_id); 
+  test_bcast_bst(VLEN, segment_id); 
  
   SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
 

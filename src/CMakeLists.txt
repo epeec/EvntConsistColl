@@ -1,5 +1,4 @@
 #Create the EvntlEvntlConsistColl library.
-# The extension is already found. Any number of sources could be listed here.
 
 # Grab the .c and .cpp files
 file (GLOB_RECURSE EVNTLCONSISTCOLL_C_CPP_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/*.cxx")
@@ -13,13 +12,13 @@ add_library (EvntlConsistColl ${EVNTLCONSISTCOLL_C_CPP_FILES})
 # when other libraries or executables link to Hello
 message ("crr source dir is ${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories (EvntlConsistColl
-				PUBLIC "${PROJECT_SOURCE_DIR}/include"
-               			"${CMAKE_CURRENT_SOURCE_DIR}" )
+				            PUBLIC "${PROJECT_SOURCE_DIR}/include"
+               			    "${CMAKE_CURRENT_SOURCE_DIR}" )
 
 # install the library
 # 'make install' to the correct locations (provided by GNUInstallDirs).
 install(TARGETS EvntlConsistColl EXPORT
-	ARCHIVE  DESTINATION ${CMAKE_INSTALL_DIR}/lib
-	LIBRARY  DESTINATION ${CMAKE_INSTALL_DIR}/lib)
+	    ARCHIVE  DESTINATION ${CMAKE_INSTALL_DIR}/lib
+	    LIBRARY  DESTINATION ${CMAKE_INSTALL_DIR}/lib)
 install(DIRECTORY ../include DESTINATION ${CMAKE_INSTALL_DIR})
 
