@@ -47,4 +47,8 @@ After building and installing comprex,
 -> the header "evntl.consist.coll.hxx" is in <target_installation_dir>/include
 -> the executable "example" is in <evntl-consist-coll_root>/build/examples
 
-
+3. Examples
+There are two examples
+- bcast provides two versions of broadcast with regular gaspi_write and as a binomial tree. Both support regular collectives
+as well as eventually consistent collectives
+- reduce provides implementation based on binomial tree that supports both regular and eventually consistent collectives
