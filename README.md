@@ -19,27 +19,29 @@ Currently, we provide early prototypes of broadcast and reduce.
 - `cmake` version > 3.6 (presently build using `cmake v3.9.3`) 
 - `c++ 14` (presently with `gcc-8.2.0`)
 
-#### Building EvntlConsistColl
+#### Building EvntConsistColl
 
-1. clone the git-repository into `<evnt-consist-coll_root>`
+1. clone the git-repository into `<EvntConsistColl_root>`
 
-2. edit appropriatelly` <evnt-consist-coll_root>/CMakeFiles.txt` to set the following variables
+2. edit appropriatelly` <EvntConsistColl_root>/CMakeFiles.txt` to set the following variables
     - if GPI-2 is not to be loaded as a module, redefine `PKG_CONFIG_PATH` by 
     adding the path to the file `GPI2.pc` (the package-config file for GPI-2)
     - eventually, comment the line with `CMAKE_SHARED_LINKER_FLAGS ...`
     (it has been added due to the relative old g++ system-libraries)
 
-3. in `<evnt-consist-coll_root>` create a subdirectory `build` to compile comprex
-    - `cd  <evnt-consist-coll_root>`
-    - `mkdir build`
-    - `cd build`
-    - `cmake .. -DCMAKE_INSTALL_DIR=<target_installation_dir>`
-    - `make install`
+3. in `<EvntConsistColl_root>` create a subdirectory `build` to compile comprex
+    ```
+    cd  <EvntConsistColl_root>
+    mkdir build
+    cd build
+    cmake .. -DCMAKE_INSTALL_DIR=<target_installation_dir>
+    make install
+    ```    
 
 After building and installing EvntConsistColl, 
 - the library `libEvntConsistColl.a` is installed in `<target_installation_dir>/lib`
-- the header `evnt.consist.coll.hxx` is in `<target_installation_dir>/include`
-- the executable examples are in `<evnt-consist-coll_root>/build/examples`
+- the header `EvntConsistColl.hxx` is in `<target_installation_dir>/include`
+- the executable examples are in `<EvntConsistColl_root>/build/examples`
 
 ## Examples
 There are two examples
