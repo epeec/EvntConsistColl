@@ -1,6 +1,6 @@
 
-#ifndef EVNTL_CONSIST_COLL_H
-#define EVNTL_CONSIST_COLL_H
+#ifndef EVNT_CONSIST_COLL_H
+#define EVNT_CONSIST_COLL_H
 
 #include <GASPI.h>
 
@@ -155,4 +155,4 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
               const gaspi_group_t group,
               const gaspi_timeout_t timeout_ms);
 
-#endif //#define EVNTL_CONSIST_COLL_H
+#endif //#define EVNT_CONSIST_COLL_H
