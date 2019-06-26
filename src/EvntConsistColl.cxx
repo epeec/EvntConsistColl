@@ -132,7 +132,6 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
  * @param offset The offset within the segment
  * @param elem_cnt The number of data elements
  * @param type Type of data (see gaspi_datatype_t)
- * @param threshold The threshol for the amount of data to be broadcasted. The value is in [0, 1]
  * @param root The process id of the root
  * @param queue_id The queue id
  * @param timeout_ws Time out: ms, GASPI_BLOCK or GASPI_TEST
@@ -196,15 +195,14 @@ gaspi_bcast (gaspi_segment_id_t const buf,
 
 /** Eventually consistent broadcast collective operation that uses binomial tree.
  *
- * @param buffer_send The buffer with data for the operation.
- * @param offset The offset within the segment
- * @param buffer_receive The buffer to receive the result of the operation.
+ * @param buf The segment with data for the operation
  * @param offset The offset within the segment
  * @param elem_cnt The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
  * @param operation The type of operations (see gaspi_operation_t).
- * @param datatype Type of data (see gaspi_datatype_t).
+ * @param type Type of data (see gaspi_datatype_t).
+ * @param threshold The threshol for the amount of data to be broadcasted. The value is in [0, 1]
  * @param root The process id of the root
- * @param group The group involved in the operation.
+ * @param queue_id The queue id
  * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
  *
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
@@ -268,12 +266,14 @@ gaspi_bcast (gaspi_segment_id_t const buf,
 /** Reduce collective operation that implements binomial tree
  *
  * @param buffer_send The buffer with data for the operation.
+ * @param offset_send The offset within the segment (buffer_send)
  * @param buffer_receive The buffer to receive the result of the operation.
+ * @param offset_receive The offset within the segment (buffer_receive)
  * @param elem_cnt The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
  * @param operation The type of operations (see gaspi_operation_t).
- * @param datatype Type of data (see gaspi_datatype_t).
+ * @param type Type of data (see gaspi_datatype_t).
  * @param root The process id of the root
- * @param group The group involved in the operation.
+ * @param queue_id The queue id
  * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
  *
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
@@ -289,7 +289,7 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
 	          const gaspi_operation_t operation,
 	          const gaspi_datatype_t type,
 	          const gaspi_number_t root,
-	          const gaspi_group_t group,
+              const gaspi_queue_id_t queue_id,
 	          const gaspi_timeout_t timeout_ms)
 {
     gaspi_rank_t iProc, nProc; 
@@ -337,22 +337,21 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
 
     // actual reduction
     for (int i = ceil(log2(nProc)) - 1; i >= 0; i--) {
-        if (bst.isactive) {
-            if ((iProc != root) && (children_count == 0) && (log2(iProc) >= i)) {
+        if ((pow(2,i) <= iProc) && (iProc < pow(2,i+1))) {
+            if (bst.isactive) {
                 gaspi_notification_id_t data_available = iProc;
                 SUCCESS_OR_DIE
                     ( gaspi_write_notify
                       ( buffer_send, offset_send * type_size, bst.parent
                       , buffer_receive, offset_recv * type_size, elem_cnt * type_size
                       , data_available, bst.parent+1 // +1 so that the value is not zero
-                      , 0, timeout_ms
+                      , queue_id, timeout_ms
                       )
                     );
                 bst.isactive = false;
             }
-        } 
-            
-        if (bst.isactive) {
+
+        } else if (iProc < pow(2,i)) {
             if (children_count > 0) {
                 gaspi_notification_id_t id, range = pow(2, bst.children_count);
                 gaspi_notification_t val = iProc+1;
@@ -370,7 +369,7 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
                 for (j = 0; j < (int) elem_cnt; j++) {
                     src_array[offset_send + j] += rcv_array[offset_recv + j];
                 }
-                            
+
                 children_count--;
             }
         }
@@ -389,13 +388,15 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
 /** Eventually consistent reduce collective operation that implements binomial tree
  *
  * @param buffer_send The buffer with data for the operation.
+ * @param offset_send The offset within the segment (buffer_send)
  * @param buffer_receive The buffer to receive the result of the operation.
+ * @param offset_receive The offset within the segment (buffer_receive)
  * @param elem_cnt The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
  * @param operation The type of operations (see gaspi_operation_t).
  * @param datatype Type of data (see gaspi_datatype_t).
  * @param threshol The threshol for the amount of data to be reduced. The value is in [0, 1]
  * @param root The process id of the root
- * @param group The group involved in the operation.
+ * @param queue_id The queue id
  * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
  *
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
@@ -412,7 +413,7 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
 	          const gaspi_datatype_t type,
               const gaspi_double threshold,
 	          const gaspi_number_t root,
-	          const gaspi_group_t group,
+              const gaspi_queue_id_t queue_id,
 	          const gaspi_timeout_t timeout_ms)
 {
     gaspi_rank_t iProc, nProc; 
@@ -460,22 +461,21 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
 
     // actual reduction
     for (int i = ceil(log2(nProc)) - 1; i >= 0; i--) {
-        if (bst.isactive) {
-            if ((iProc != root) && (children_count == 0) && (log2(iProc) >= i)) {
+        if ((pow(2,i) <= iProc) && (iProc < pow(2,i+1))) {
+            if (bst.isactive) {
                 gaspi_notification_id_t data_available = iProc;
                 SUCCESS_OR_DIE
                     ( gaspi_write_notify
                       ( buffer_send, offset_send * type_size, bst.parent
                       , buffer_receive, offset_recv * type_size, ceil(elem_cnt * threshold) * type_size
                       , data_available, bst.parent+1 // +1 so that the value is not zero
-                      , 0, timeout_ms
+                      , queue_id, timeout_ms
                       )
                     );
                 bst.isactive = false;
             }
-        } 
-            
-        if (bst.isactive) {
+
+        } else if (iProc < pow(2,i)) {
             if (children_count > 0) {
                 gaspi_notification_id_t id, range = pow(2, bst.children_count);
                 gaspi_notification_t val = iProc+1;

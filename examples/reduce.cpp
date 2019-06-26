@@ -22,9 +22,12 @@ void test_reduce(const int VLEN, gaspi_segment_id_t const segment_id){
   {
       src_array[j] = (double)( iProc * VLEN + j );
   }
+  
+  gaspi_rank_t root = 0;
+  gaspi_queue_id_t queue_id = 0;
 
+  gaspi_reduce(segment_id, 0, segment_id, VLEN, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, root, queue_id, GASPI_BLOCK);
   //gaspi_allreduce(src_array, src_array, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, GASPI_GROUP_ALL, GASPI_BLOCK);
-  gaspi_reduce(segment_id, 0, segment_id, VLEN, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, 0, GASPI_GROUP_ALL, GASPI_BLOCK);
 
   for (int j = 0; j < 2 * VLEN; ++j)
   {
@@ -51,8 +54,11 @@ void test_evnt_consist_reduce(const int VLEN, gaspi_segment_id_t const segment_i
   {
       src_array[j] = (double)( iProc * VLEN + j );
   }
+  
+  gaspi_rank_t root = 0;
+  gaspi_queue_id_t queue_id = 0;
 
-  gaspi_reduce(segment_id, 0, segment_id, VLEN, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, threshold, 0, GASPI_GROUP_ALL, GASPI_BLOCK);
+  gaspi_reduce(segment_id, 0, segment_id, VLEN, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
 
   for (int j = 0; j < 2 * VLEN; ++j)
   {
@@ -82,6 +88,7 @@ int main( )
     );
 
   gaspi_double const threshold = 0.5;
+
   test_evnt_consist_reduce(VLEN, segment_id, threshold); 
 
   //test_reduce(VLEN, segment_id); 

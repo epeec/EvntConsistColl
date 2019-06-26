@@ -9,9 +9,8 @@
 // testing gaspi bcast that is based on (n-1) straigt gaspi_write
 void test_bcast_simple(const int VLEN, gaspi_segment_id_t const segment_id){
   
-  gaspi_rank_t iProc, nProc, root = 0;
+  gaspi_rank_t iProc, root = 0;
   SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
-  SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
     
   gaspi_pointer_t array;
   SUCCESS_OR_DIE( gaspi_segment_ptr (segment_id, &array) );
@@ -40,9 +39,8 @@ void test_bcast_simple(const int VLEN, gaspi_segment_id_t const segment_id){
 // testing eventually consistent gaspi bcast that is based on (n-1) straight gaspi_writes
 void test_evnt_consist_bcast_simple(const int VLEN, gaspi_segment_id_t const segment_id, const double threshold){
  
-  gaspi_rank_t iProc, nProc, root = 0;
+  gaspi_rank_t iProc, root = 0;
   SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
-  SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
     
   gaspi_pointer_t array;
   SUCCESS_OR_DIE( gaspi_segment_ptr (segment_id, &array) );
@@ -71,9 +69,8 @@ void test_evnt_consist_bcast_simple(const int VLEN, gaspi_segment_id_t const seg
 // testing gaspi bcast that is based on binomial tree
 void test_bcast(const int VLEN, gaspi_segment_id_t const segment_id){
   
-  gaspi_rank_t iProc, nProc, root = 0;
+  gaspi_rank_t iProc, root = 0;
   SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
-  SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
     
   gaspi_pointer_t array;
   SUCCESS_OR_DIE( gaspi_segment_ptr (segment_id, &array) );
@@ -102,9 +99,8 @@ void test_bcast(const int VLEN, gaspi_segment_id_t const segment_id){
 // testing eventually consistent gaspi bcast that is based on binomial tree
 void test_evnt_consist_bcast(const int VLEN, gaspi_segment_id_t const segment_id, const double threshold){
  
-  gaspi_rank_t iProc, nProc, root = 0;
+  gaspi_rank_t iProc, root = 0;
   SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
-  SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
     
   gaspi_pointer_t array;
   SUCCESS_OR_DIE( gaspi_segment_ptr (segment_id, &array) );
