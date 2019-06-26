@@ -353,6 +353,14 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
     }
     bst.children_count = children_count;
 
+    // auxiliary pointers
+    gaspi_pointer_t src_arr, rcv_arr;
+    SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_send, &src_arr) );
+    SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_receive, &rcv_arr) );
+    double *src_array = (double *)(src_arr);
+    double *rcv_array = (double *)(rcv_arr);
+
+    // actual reduction
     for (int i = ceil(log2(nProc)) - 1; i >= 0; i--) {
         if (bst.isactive) {
             if ((iProc != root) && (children_count == 0) && (log2(iProc) >= i)) {
@@ -384,17 +392,19 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
                 ASSERT(id <= bst.children[bst.children_count-1]);
 
                 // reduce
-                gaspi_pointer_t src_arr, rcv_arr;
-                SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_send, &src_arr) );
-                SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_receive, &rcv_arr) );
-                double *src_array = (double *)(src_arr);
-                double *rcv_array = (double *)(rcv_arr);
                 for (j = 0; j < elem_cnt; j++) {
                     src_array[offset_send + j] += rcv_array[offset_recv + j];
                 }
                             
                 children_count--;
             }
+        }
+    }
+
+    // copy the results from send to receive buffer
+    if (iProc == root) {
+        for (j = 0; j < elem_cnt; j++) {
+            rcv_array[offset_recv + j] = src_array[offset_send + j];
         }
     }
 
@@ -466,6 +476,14 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
     }
     bst.children_count = children_count;
 
+    // auxiliary pointers
+    gaspi_pointer_t src_arr, rcv_arr;
+    SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_send, &src_arr) );
+    SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_receive, &rcv_arr) );
+    double *src_array = (double *)(src_arr);
+    double *rcv_array = (double *)(rcv_arr);
+
+    // actual reduction
     for (int i = ceil(log2(nProc)) - 1; i >= 0; i--) {
         if (bst.isactive) {
             if ((iProc != root) && (children_count == 0) && (log2(iProc) >= i)) {
@@ -497,17 +515,19 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
                 ASSERT(id <= bst.children[bst.children_count-1]);
 
                 // reduce
-                gaspi_pointer_t src_arr, rcv_arr;
-                SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_send, &src_arr) );
-                SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_receive, &rcv_arr) );
-                double *src_array = (double *)(src_arr);
-                double *rcv_array = (double *)(rcv_arr);
                 for (j = 0; j < ceil(elem_cnt * threshold); j++) {
                     src_array[offset_send + j] += rcv_array[offset_recv + j];
                 }
                             
                 children_count--;
             }
+        }
+    }
+
+    // copy the results from send to receive buffer
+    if (iProc == root) {
+        for (j = 0; j < ceil(elem_cnt * threshold); j++) {
+            rcv_array[offset_recv + j] = src_array[offset_send + j];
         }
     }
 
