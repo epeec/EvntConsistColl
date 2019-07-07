@@ -29,7 +29,7 @@ Currently, we provide early prototypes of broadcast and reduce.
     - eventually, comment the line with `CMAKE_SHARED_LINKER_FLAGS ...`
     (it has been added due to the relative old g++ system-libraries)
 
-3. in `<EvntConsistColl_root>` create a subdirectory `build` to compile comprex
+3. in `<EvntConsistColl_root>` create a subdirectory `build` to compile EvntConsistColl
     ```
     cd  <EvntConsistColl_root>
     mkdir build
