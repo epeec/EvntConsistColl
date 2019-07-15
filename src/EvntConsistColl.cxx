@@ -332,47 +332,63 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
     gaspi_pointer_t src_arr, rcv_arr;
     SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_send, &src_arr) );
     SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_receive, &rcv_arr) );
-    double *src_array = (double *)(src_arr);
-    double *rcv_array = (double *)(rcv_arr);
+    double *src_array = (double *)(src_arr) + offset_send;
+    double *rcv_array = (double *)(rcv_arr) + offset_recv;
 
     // actual reduction
     for (int i = ceil(log2(nProc)) - 1; i >= 0; i--) {
-        if ((pow(2,i) <= iProc) && (iProc < pow(2,i+1))) {
-            if (bst.isactive) {
-                gaspi_notification_id_t data_available = iProc;
-                SUCCESS_OR_DIE
-                    ( gaspi_write_notify
-                      ( buffer_send, offset_send * type_size, bst.parent
-                      , buffer_receive, offset_recv * type_size, elem_cnt * type_size
-                      , data_available, bst.parent+1 // +1 so that the value is not zero
-                      , queue_id, timeout_ms
-                      )
-                    );
-                bst.isactive = false;
+        if (bst.isactive && (children_count == 0) && (pow(2,i) <= iProc) && (iProc < pow(2,i+1))) {
+            // wait for notification that the data can be sent
+            gaspi_notification_id_t data_available = iProc;
+            wait_or_die ( buffer_receive, data_available, bst.parent + 1 );  
+
+            // send the data to the parent
+            data_available = iProc;
+            SUCCESS_OR_DIE
+                ( gaspi_write_notify
+                  ( buffer_send, offset_send * type_size, bst.parent
+                  , buffer_receive, offset_recv * type_size, elem_cnt * type_size
+                  , data_available, bst.parent+1 // +1 so that the value is not zero
+                  , queue_id, timeout_ms
+                  )
+                );
+
+            bst.isactive = false;
+
+        } else if (bst.isactive && (children_count > 0) && (iProc < pow(2,i)) && ((iProc + pow(2,i)) < nProc)) {
+
+            // need to send notification that the parent is ready to receive the data
+            gaspi_rank_t rank = bst.children[children_count-1];        
+            gaspi_notification_id_t id = rank;
+            gaspi_notification_t val = iProc + 1;
+            SUCCESS_OR_DIE
+                ( gaspi_notify(buffer_receive
+                    , rank
+                    , id
+                    , val
+                    , queue_id
+                    , timeout_ms)
+                );
+        
+            // receive data
+            val = iProc + 1;
+            waitsome_and_reset(buffer_receive
+                       , bst.children[0]
+                       , nProc - bst.children[0]
+                       , &id
+                       , &val
+                       );
+            ASSERT(id >= bst.children[0]);
+            ASSERT(id <= bst.children[bst.children_count-1]);
+
+            // reduce
+            for (j = 0; j < (int) elem_cnt; j++) {
+                src_array[j] += rcv_array[j];
             }
 
-        } else if (iProc < pow(2,i)) {
-            if (children_count > 0) {
-                gaspi_notification_id_t id, range = pow(2, bst.children_count);
-                gaspi_notification_t val = iProc+1;
-
-                waitsome_and_reset(buffer_receive
-                           , bst.children[0]
-                           , range
-                           , &id
-                           , &val
-                           );
-                ASSERT(id >= bst.children[0]);
-                ASSERT(id <= bst.children[bst.children_count-1]);
-
-                // reduce
-                for (j = 0; j < (int) elem_cnt; j++) {
-                    src_array[offset_send + j] += rcv_array[offset_recv + j];
-                }
-
-                children_count--;
-            }
+            children_count--;
         }
+
     }
 
     // copy the results from send to receive buffer
@@ -461,41 +477,55 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
 
     // actual reduction
     for (int i = ceil(log2(nProc)) - 1; i >= 0; i--) {
-        if ((pow(2,i) <= iProc) && (iProc < pow(2,i+1))) {
-            if (bst.isactive) {
-                gaspi_notification_id_t data_available = iProc;
-                SUCCESS_OR_DIE
-                    ( gaspi_write_notify
-                      ( buffer_send, offset_send * type_size, bst.parent
-                      , buffer_receive, offset_recv * type_size, ceil(elem_cnt * threshold) * type_size
-                      , data_available, bst.parent+1 // +1 so that the value is not zero
-                      , queue_id, timeout_ms
-                      )
-                    );
-                bst.isactive = false;
+        if (bst.isactive && (children_count == 0) && (pow(2,i) <= iProc) && (iProc < pow(2,i+1))) {
+            // wait for notification that the data can be sent
+            gaspi_notification_id_t data_available = iProc;
+            wait_or_die ( buffer_receive, data_available, bst.parent + 1 );  
+
+            // send the data to the parent
+            data_available = iProc;
+            SUCCESS_OR_DIE
+                ( gaspi_write_notify
+                  ( buffer_send, offset_send * type_size, bst.parent
+                  , buffer_receive, offset_recv * type_size, ceil(elem_cnt * threshold) * type_size
+                  , data_available, bst.parent+1 // +1 so that the value is not zero
+                  , queue_id, timeout_ms
+                  )
+                );
+            bst.isactive = false;
+
+        } else if (bst.isactive && (children_count > 0) && (iProc < pow(2,i)) && ((iProc + pow(2,i)) < nProc)) {
+
+            // need to send notification that the parent is ready to receive the data
+            gaspi_rank_t rank = bst.children[children_count-1];        
+            gaspi_notification_id_t id = rank;
+            gaspi_notification_t val = iProc + 1;
+            SUCCESS_OR_DIE
+                ( gaspi_notify(buffer_receive
+                    , rank
+                    , id
+                    , val
+                    , queue_id
+                    , timeout_ms)
+                );
+        
+            // receive data
+            val = iProc+1;
+            waitsome_and_reset(buffer_receive
+                       , bst.children[0]
+                       , nProc - bst.children[0]
+                       , &id
+                       , &val
+                       );
+            ASSERT(id >= bst.children[0]);
+            ASSERT(id <= bst.children[bst.children_count-1]);
+
+            // reduce
+            for (j = 0; j < ceil(elem_cnt * threshold); j++) {
+                src_array[offset_send + j] += rcv_array[offset_recv + j];
             }
-
-        } else if (iProc < pow(2,i)) {
-            if (children_count > 0) {
-                gaspi_notification_id_t id, range = pow(2, bst.children_count);
-                gaspi_notification_t val = iProc+1;
-
-                waitsome_and_reset(buffer_receive
-                           , bst.children[0]
-                           , range
-                           , &id
-                           , &val
-                           );
-                ASSERT(id >= bst.children[0]);
-                ASSERT(id <= bst.children[bst.children_count-1]);
-
-                // reduce
-                for (j = 0; j < ceil(elem_cnt * threshold); j++) {
-                    src_array[offset_send + j] += rcv_array[offset_recv + j];
-                }
-                            
-                children_count--;
-            }
+                        
+            children_count--;
         }
     }
 

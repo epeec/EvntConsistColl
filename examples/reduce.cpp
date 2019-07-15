@@ -21,7 +21,7 @@ void test_reduce(const int VLEN, gaspi_segment_id_t const segment_send_id, gaspi
 
   for (int j = 0; j < VLEN; ++j)
   {
-      src_arr[j] = (double)( iProc * VLEN + j );
+      src_arr[j] = (double) iProc;
   }
   
   gaspi_rank_t root = 0;
@@ -57,19 +57,13 @@ void test_evnt_consist_reduce(const int VLEN, gaspi_segment_id_t const segment_s
 
   for (int j = 0; j < VLEN; ++j)
   {
-      src_arr[j] = (double)( iProc * VLEN + j );
+      src_arr[j] = (double) iProc;
   }
   
   gaspi_rank_t root = 0;
   gaspi_queue_id_t queue_id = 0;
 
   gaspi_reduce(segment_send_id, 0, segment_recv_id, 0, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
-
-  for (int j = 0; j < VLEN; ++j)
-  {
-      printf("rank %d rcv elem %d: %f \n", iProc, j, src_arr[j] );
-  }
-  printf("\n");
 
   if (iProc == root) {
       printf("=== Result ===\n");
