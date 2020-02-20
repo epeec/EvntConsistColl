@@ -162,4 +162,30 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
               const gaspi_queue_id_t queue_id,
               const gaspi_timeout_t timeout_ms);
 
+/** Segmented pipeline ring implementation
+ *
+ * @param buffer_send The buffer with data for the operation
+ * @param offset_send The offset within the segment (buffer_send)
+ * @param buffer_receive The buffer to receive the result of the operation
+ * @param offset_receive The offset within the segment (buffer_receive)
+ * @param elem_cnt The number of data elements in the buffer
+ * @param operation The type of operations (see gaspi_operation_t)
+ * @param datatype Type of data (see gaspi_datatype_t)
+ * @param queue_id The queue id
+ * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST)
+ *
+ * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
+ * error, GASPI_TIMEOUT in case of timeout
+ */
+gaspi_return_t 
+gaspi_ring_allreduce (const gaspi_segment_id_t buffer_send,
+	                  gaspi_number_t const offset_send,
+   	                  gaspi_segment_id_t buffer_receive,
+                      gaspi_number_t const offset_recv,
+                      const gaspi_number_t elem_cnt,
+                      const gaspi_operation_t operation,
+                      const gaspi_datatype_t type,
+                      const gaspi_queue_id_t queue_id,
+                      const gaspi_timeout_t timeout_ms);
+
 #endif //#define EVNT_CONSIST_COLL_H

@@ -1,6 +1,9 @@
 
 #include <cmath>
 #include <cstdlib>
+#include <vector>
+#include <iostream>
+#include <cstring>
 
 #include <EvntConsistColl.hxx>
 
@@ -547,3 +550,160 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
     return GASPI_SUCCESS;
 }
 
+/** Segmented pipeline ring implementation
+ *
+ * @param buffer_send The buffer with data for the operation
+ * @param offset_send The offset within the segment (buffer_send)
+ * @param buffer_receive The buffer to receive the result of the operation
+ * @param offset_receive The offset within the segment (buffer_receive)
+ * @param elem_cnt The number of data elements in the buffer
+ * @param operation The type of operations (see gaspi_operation_t)
+ * @param datatype Type of data (see gaspi_datatype_t)
+ * @param queue_id The queue id
+ * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST)
+ *
+ * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
+ * error, GASPI_TIMEOUT in case of timeout
+ */
+gaspi_return_t 
+gaspi_ring_allreduce (const gaspi_segment_id_t buffer_send,
+	                  gaspi_number_t const offset_send,
+   	                  gaspi_segment_id_t buffer_receive,
+                      gaspi_number_t const offset_recv,
+                      const gaspi_number_t elem_cnt,
+                      const gaspi_operation_t operation,
+                      const gaspi_datatype_t type,
+                      const gaspi_queue_id_t queue_id,
+                      const gaspi_timeout_t timeout_ms)
+{
+    gaspi_rank_t iProc, nProc; 
+    SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+    SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
+
+    if (nProc <= 1)
+        return GASPI_SUCCESS;
+
+    // auxiliary pointers
+    gaspi_pointer_t src_arr, rcv_arr;
+    SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_send, &src_arr) );
+    SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_receive, &rcv_arr) );
+    double *src_array = (double *)(src_arr);
+    double *rcv_array = (double *)(rcv_arr);
+
+    // Partition elements of array into nProc chunks
+    const int segment_size = elem_cnt / nProc;
+    std::vector<int> segment_sizes(nProc, segment_size);
+
+    int segment_residual = elem_cnt % nProc;
+    for (int i = 0; i < segment_residual; i++) 
+        segment_sizes[i]++;
+
+    // Compute where each chunk ends
+    std::vector<int> segment_ends(nProc);
+    segment_ends[0] = segment_sizes[0];
+    for (int i = 1; i < nProc; i++) 
+        segment_ends[i] = segment_sizes[i] + segment_ends[i-1];
+   
+    // The last segment should end at the end of segment
+    ASSERT (segment_ends[nProc - 1] == elem_cnt);
+
+    // Copy the data to the output buffer to avoid modifying the input buffer
+    std::memcpy((void*) rcv_array, (void*) src_array, elem_cnt * sizeof(double));
+
+    // Allocate a temporary buffer to store incoming data
+    gaspi_segment_id_t const buffer = 2;
+    SUCCESS_OR_DIE
+    ( gaspi_segment_create
+      ( buffer, segment_sizes[0]
+      , GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_INITIALIZED
+      )
+    );
+    gaspi_pointer_t buf_arr;
+    SUCCESS_OR_DIE( gaspi_segment_ptr (buffer, &buf_arr) );
+    double *buf_array = (double *)(buf_arr);
+
+    // Receive from left neighbor
+    const int recv_from = (iProc - 1 + nProc) % nProc;
+
+    // Send to righ`t neigbor
+    const int send_to = (iProc + 1) % nProc;
+
+    // type size
+    int type_size = sizeof(double);
+
+    // scatter-reduce phase
+    // At every step, for every rank, we iterate through
+    // segments with wraparound and send and recv from our neighbors and reduce
+    // locally. At the i'th iteration, iProc sends segment (rank - i) and receives
+    // segment (rank - i - 1)
+    for (int i = 0; i < nProc - 1; i++) {
+        // notifications
+        gaspi_notification_id_t notif = 0; 
+
+        int recv_chunk = (iProc - i - 1 + nProc) % nProc;
+        int send_chunk = (iProc - i + nProc) % nProc;
+
+        int segment_start = segment_ends[send_chunk] - segment_sizes[send_chunk];
+
+        gaspi_write_notify(buffer_receive,
+          segment_start * type_size, // offset
+          send_to,
+          buffer,
+          0, 
+          segment_sizes[send_chunk] * type_size, 
+          notif,
+          iProc + 1, // notification value: +1 to avoid 0. It equals to recvfrom + 1 on receiver side
+          queue_id,
+          GASPI_BLOCK);
+
+        // wait for notification that the data arrived
+        wait_or_die ( buffer, notif, recv_from + 1 );  
+
+        // reduce
+        segment_start = segment_ends[recv_chunk] - segment_sizes[recv_chunk];
+        for (int i = 0; i < segment_sizes[recv_chunk]; i++) {
+            rcv_array[segment_start + i] += buf_array[i];
+        }         
+
+        gaspi_barrier(GASPI_GROUP_ALL, timeout_ms);
+    }
+
+    // pipelined ring allgather
+    // At every step, for every rank, we iterate through
+    // segments with wraparound and send and recv from our neighbors.
+    // At the i'th iteration, iProc sends segment (rank + 1 - i) and receives
+    // segment (rank - i)
+    for (int i = 0; i < nProc-1; i++) {
+        // notifications
+        gaspi_notification_id_t notif = 0; 
+        
+        int send_chunk = (iProc - i + 1 + nProc) % nProc;
+        int recv_chunk = (iProc - i + nProc) % nProc;
+
+        int segment_start = segment_ends[send_chunk] - segment_sizes[send_chunk];
+
+        gaspi_write_notify(buffer_receive,
+          segment_start * type_size, // offset
+          send_to,
+          buffer,
+          0, 
+          segment_sizes[send_chunk] * type_size, 
+          notif,
+          iProc + 1, // notification value: +1 to avoid 0. It equals to recvfrom + 1 on receiver side
+          queue_id,
+          GASPI_BLOCK);
+
+        // wait for notification that the data arrived
+        wait_or_die ( buffer, notif, recv_from + 1 );  
+
+        // copy
+        segment_start = segment_ends[recv_chunk] - segment_sizes[recv_chunk];
+        for (int i = 0; i < segment_sizes[recv_chunk]; i++) {
+            rcv_array[segment_start + i] = buf_array[i];           
+        }         
+
+        gaspi_barrier(GASPI_GROUP_ALL, timeout_ms);
+    }
+
+    return GASPI_SUCCESS;
+}

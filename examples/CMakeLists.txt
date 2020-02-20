@@ -45,3 +45,20 @@ target_link_libraries (reduce_bench
 		               pthread
                        ibverbs
 		               rt)
+
+
+#add executable called "allreduce_bench" that is built from the source file
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DN_SA=10 -DM_SZ=1000000")
+file(GLOB_RECURSE ALLREDUCE_SOURCES allreduce_bench.cpp queue.cpp now.cpp)
+add_executable (allreduce_bench ${ALLREDUCE_SOURCES})
+
+target_include_directories (allreduce_bench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries (allreduce_bench
+                       LINK_PUBLIC "-static-libstdc++"
+                       EvntConsistColl 
+		               ${GPI2_LIBRARIES} 
+		               pthread
+                       ibverbs
+		               rt)
+
