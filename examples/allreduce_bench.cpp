@@ -16,19 +16,25 @@ void check(const int VLEN, const double* res) {
 
     
     double resval = nProc * (nProc - 1) / 2;
+    bool correct = true;
 
     for (int i = 0; i < VLEN; i++) {
         if (res[i] != resval) {
             std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
+            correct = false;
         }
     }
+
+    if (iProc == 0 && correct)
+    	std::cout << "Successful run!\n";
 }
 
 // testing regular gaspi allreduce that is based on binomial tree
 void test_ring_allreduce(const int VLEN){
   
-  gaspi_rank_t iProc;
-  SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+    gaspi_rank_t iProc, nProc; 
+    SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+    SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
 
   gaspi_segment_id_t const segment_send_id = 0;
   gaspi_segment_id_t const segment_recv_id = 1;

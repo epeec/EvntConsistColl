@@ -580,6 +580,9 @@ gaspi_ring_allreduce (const gaspi_segment_id_t buffer_send,
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
 
+    // type size
+    int type_size = sizeof(double);
+
     if (nProc <= 1)
         return GASPI_SUCCESS;
 
@@ -608,13 +611,13 @@ gaspi_ring_allreduce (const gaspi_segment_id_t buffer_send,
     ASSERT (segment_ends[nProc - 1] == elem_cnt);
 
     // Copy the data to the output buffer to avoid modifying the input buffer
-    std::memcpy((void*) rcv_array, (void*) src_array, elem_cnt * sizeof(double));
+    std::memcpy((void*) rcv_array, (void*) src_array, elem_cnt * type_size);
 
     // Allocate a temporary buffer to store incoming data
     gaspi_segment_id_t const buffer = 2;
     SUCCESS_OR_DIE
     ( gaspi_segment_create
-      ( buffer, segment_sizes[0]
+      ( buffer, segment_sizes[0] * type_size
       , GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_INITIALIZED
       )
     );
@@ -628,8 +631,8 @@ gaspi_ring_allreduce (const gaspi_segment_id_t buffer_send,
     // Send to righ`t neigbor
     const int send_to = (iProc + 1) % nProc;
 
-    // type size
-    int type_size = sizeof(double);
+    // notifications
+    gaspi_notification_id_t notif = 0; 
 
     // scatter-reduce phase
     // At every step, for every rank, we iterate through
@@ -637,8 +640,6 @@ gaspi_ring_allreduce (const gaspi_segment_id_t buffer_send,
     // locally. At the i'th iteration, iProc sends segment (rank - i) and receives
     // segment (rank - i - 1)
     for (int i = 0; i < nProc - 1; i++) {
-        // notifications
-        gaspi_notification_id_t notif = 0; 
 
         int recv_chunk = (iProc - i - 1 + nProc) % nProc;
         int send_chunk = (iProc - i + nProc) % nProc;
@@ -649,7 +650,7 @@ gaspi_ring_allreduce (const gaspi_segment_id_t buffer_send,
           segment_start * type_size, // offset
           send_to,
           buffer,
-          0, 
+          0, // offset
           segment_sizes[send_chunk] * type_size, 
           notif,
           iProc + 1, // notification value: +1 to avoid 0. It equals to recvfrom + 1 on receiver side
@@ -674,8 +675,6 @@ gaspi_ring_allreduce (const gaspi_segment_id_t buffer_send,
     // At the i'th iteration, iProc sends segment (rank + 1 - i) and receives
     // segment (rank - i)
     for (int i = 0; i < nProc-1; i++) {
-        // notifications
-        gaspi_notification_id_t notif = 0; 
         
         int send_chunk = (iProc - i + 1 + nProc) % nProc;
         int recv_chunk = (iProc - i + nProc) % nProc;
@@ -686,7 +685,7 @@ gaspi_ring_allreduce (const gaspi_segment_id_t buffer_send,
           segment_start * type_size, // offset
           send_to,
           buffer,
-          0, 
+          0, // offset 
           segment_sizes[send_chunk] * type_size, 
           notif,
           iProc + 1, // notification value: +1 to avoid 0. It equals to recvfrom + 1 on receiver side
