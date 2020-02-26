@@ -4,6 +4,12 @@
 
 #include <GASPI.h>
 
+  struct segmentBuffer {
+    gaspi_segment_id_t segment;
+    gaspi_offset_t offset;
+  };
+
+
 /** Broadcast collective operation that is based on (n-1) straight gaspi_write
  *
  * @param buf The segment with data for the operation
@@ -178,10 +184,9 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
  * error, GASPI_TIMEOUT in case of timeout
  */
 gaspi_return_t 
-gaspi_ring_allreduce (const gaspi_segment_id_t buffer_send,
-	                  gaspi_number_t const offset_send,
-   	                  gaspi_segment_id_t buffer_receive,
-                      gaspi_number_t const offset_recv,
+gaspi_ring_allreduce (const segmentBuffer buffer_send,
+   	                  segmentBuffer buffer_receive,
+   	                  segmentBuffer buffer_tmp,
                       const gaspi_number_t elem_cnt,
                       const gaspi_operation_t operation,
                       const gaspi_datatype_t type,
