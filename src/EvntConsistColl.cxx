@@ -552,14 +552,13 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
 
 /** Segmented pipeline ring implementation
  *
- * @param buffer_send The buffer with data for the operation
- * @param offset_send The offset within the segment (buffer_send)
- * @param buffer_receive The buffer to receive the result of the operation
- * @param offset_receive The offset within the segment (buffer_receive)
- * @param elem_cnt The number of data elements in the buffer
- * @param operation The type of operations (see gaspi_operation_t)
+ * @param buffer_send Segment with offset of the original data
+ * @param buffer_receive Segment with offset of the reduced data
+ * @param buffer_tmp Segment with offset of the temprorary part of data (~elem_cnt/nProc)
+ * @param elem_cnt Number of data elements in the buffer
+ * @param operation Type of operations (see gaspi_operation_t)
  * @param datatype Type of data (see gaspi_datatype_t)
- * @param queue_id The queue id
+ * @param queue_id Queue id
  * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST)
  *
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
@@ -659,7 +658,6 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
         }
 
         gaspi_barrier(GASPI_GROUP_ALL, timeout_ms);
-        
     }
 
     // pipelined ring allgather
