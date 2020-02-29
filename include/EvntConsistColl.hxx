@@ -113,11 +113,9 @@ gaspi_bcast (gaspi_segment_id_t const buf,
 
 /** Reduce collective operation that implements binomial tree
  *
- * @param buffer_send The buffer with data for the operation.
- * @param offset_send The offset within the segment (buffer_send)
- * @param buffer_receive The buffer to receive the result of the operation.
- * @param offset_receive The offset within the segment (buffer_receive)
- * @param elem_cnt The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
+ * @param buffer_send Segment with offset of the original data
+ * @param buffer_receive Segment with offset of the reduced data
+ * @param buffer_tmp Segment with offset of the temprorary part of data (~elem_cnt/nProc)
  * @param operation The type of operations (see gaspi_operation_t).
  * @param type Type of data (see gaspi_datatype_t).
  * @param root The process id of the root
@@ -128,10 +126,9 @@ gaspi_bcast (gaspi_segment_id_t const buf,
  * error, GASPI_TIMEOUT in case of timeout.
  */
 gaspi_return_t 
-gaspi_reduce (const gaspi_segment_id_t buffer_send,
-              gaspi_number_t const offset_send,
-              gaspi_segment_id_t const buffer_receive,
-              gaspi_number_t const offset_recv,
+gaspi_reduce (const segmentBuffer buffer_send,
+   	          segmentBuffer buffer_receive,
+   	          segmentBuffer buffer_tmp,
               const gaspi_number_t elem_cnt,
               const gaspi_operation_t operation,
               const gaspi_datatype_t type,
@@ -141,10 +138,9 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
 
 /** Eventually consistent reduce collective operation that implements binomial tree
  *
- * @param buffer_send The buffer with data for the operation.
- * @param offset_send The offset within the segment (buffer_send)
- * @param buffer_receive The buffer to receive the result of the operation.
- * @param offset_receive The offset within the segment (buffer_receive)
+ * @param buffer_send Segment with offset of the original data
+ * @param buffer_receive Segment with offset of the reduced data
+ * @param buffer_tmp Segment with offset of the temprorary part of data (~elem_cnt/nProc)
  * @param elem_cnt The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
  * @param operation The type of operations (see gaspi_operation_t).
  * @param type Type of data (see gaspi_datatype_t).
@@ -157,10 +153,9 @@ gaspi_reduce (const gaspi_segment_id_t buffer_send,
  * error, GASPI_TIMEOUT in case of timeout.
  */
 gaspi_return_t 
-gaspi_reduce (const gaspi_segment_id_t buffer_send,
-              gaspi_number_t const offset_send,
-              gaspi_segment_id_t const buffer_receive,
-              gaspi_number_t const offset_recv,
+gaspi_reduce (const segmentBuffer buffer_send,
+   	          segmentBuffer buffer_receive,
+   	          segmentBuffer buffer_tmp,
               const gaspi_number_t elem_cnt,
               const gaspi_operation_t operation,
               const gaspi_datatype_t type,
