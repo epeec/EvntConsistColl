@@ -71,6 +71,8 @@ void test_bcast(const int VLEN, gaspi_segment_id_t const segment_id){
   
   gaspi_rank_t iProc, root = 0;
   SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+
+  segmentBuffer buffer = {segment_id, 0};    
     
   gaspi_pointer_t array;
   SUCCESS_OR_DIE( gaspi_segment_ptr (segment_id, &array) );
@@ -85,7 +87,7 @@ void test_bcast(const int VLEN, gaspi_segment_id_t const segment_id){
 
   gaspi_queue_id_t queue_id = 0;
 
-  gaspi_bcast(segment_id, 0, VLEN, GASPI_TYPE_DOUBLE, root, queue_id, GASPI_BLOCK);
+  gaspi_bcast(buffer, VLEN, GASPI_TYPE_DOUBLE, root, queue_id, GASPI_BLOCK);
 
   for (int j = 0; j < VLEN; ++j)
   {
@@ -101,6 +103,8 @@ void test_evnt_consist_bcast(const int VLEN, gaspi_segment_id_t const segment_id
  
   gaspi_rank_t iProc, root = 0;
   SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+
+  segmentBuffer buffer = {segment_id, 0};    
     
   gaspi_pointer_t array;
   SUCCESS_OR_DIE( gaspi_segment_ptr (segment_id, &array) );
@@ -115,7 +119,7 @@ void test_evnt_consist_bcast(const int VLEN, gaspi_segment_id_t const segment_id
 
   gaspi_queue_id_t queue_id = 0;
 
-  gaspi_bcast(segment_id, 0, VLEN, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
+  gaspi_bcast(buffer, VLEN, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
 
   for (int j = 0; j < VLEN; ++j)
   {

@@ -131,8 +131,7 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
 
 /** Broadcast collective operation that uses binomial tree.
  *
- * @param buf The segment with data for the operation
- * @param offset The offset within the segment
+ * @param buffer Segment with offset of the original data
  * @param elem_cnt The number of data elements
  * @param type Type of data (see gaspi_datatype_t)
  * @param root The process id of the root
@@ -143,8 +142,7 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
  * error, GASPI_TIMEOUT in case of timeout.
  */
 gaspi_return_t
-gaspi_bcast (gaspi_segment_id_t const buf,
-             gaspi_number_t const offset,
+gaspi_bcast (segmentBuffer const buffer,
              const gaspi_number_t elem_cnt,
              const gaspi_datatype_t type,
              const gaspi_number_t root,
@@ -166,7 +164,7 @@ gaspi_bcast (gaspi_segment_id_t const buf,
     	type_size = 8;
     else
 	    type_size = 4;
-    gaspi_number_t doffset = offset * type_size;
+    gaspi_number_t doffset = buffer.offset * type_size;
 
     // compute parent
     // this can be omitted as the parent of each process can be found by flipping the leftmost 1-bit of its ID
@@ -183,25 +181,26 @@ gaspi_bcast (gaspi_segment_id_t const buf,
             if (dst < nProc) {
                 SUCCESS_OR_DIE
                     ( gaspi_write_notify
-                      ( buf, doffset, dst
-                      , buf, doffset, elem_cnt * type_size
+                      ( buffer.segment, doffset, dst
+                      , buffer.segment, doffset, elem_cnt * type_size
                       , data_available, iProc+1 // +1 so that the value is not zero
                       , queue_id, timeout_ms 
                       )
                     );
             }
         } else if ((1 << (i+1)) > iProc) {
-  	        wait_or_die ( buf, data_available, parent+1 );  
+  	        wait_or_die ( buffer.segment, data_available, parent+1 );  
         }
     }
 
+    gaspi_barrier(GASPI_GROUP_ALL, timeout_ms);
+ 
     return GASPI_SUCCESS;
 }
 
 /** Eventually consistent broadcast collective operation that uses binomial tree.
  *
- * @param buf The segment with data for the operation
- * @param offset The offset within the segment
+ * @param buffer Segment with offset of the original data
  * @param elem_cnt The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
  * @param operation The type of operations (see gaspi_operation_t).
  * @param type Type of data (see gaspi_datatype_t).
@@ -214,8 +213,7 @@ gaspi_bcast (gaspi_segment_id_t const buf,
  * error, GASPI_TIMEOUT in case of timeout.
  */
 gaspi_return_t
-gaspi_bcast (gaspi_segment_id_t const buf,
-             gaspi_number_t const offset,
+gaspi_bcast (segmentBuffer const buffer,
              const gaspi_number_t elem_cnt,
              const gaspi_datatype_t type,
              const gaspi_double threshold,
@@ -238,7 +236,7 @@ gaspi_bcast (gaspi_segment_id_t const buf,
     	type_size = 8;
     else
 	    type_size = 4;
-    gaspi_number_t doffset = offset * type_size;
+    gaspi_number_t doffset = buffer.offset * type_size;
 
     // compute parent
     // this can be omitted as the parent of each process can be found by flipping the leftmost 1-bit of its ID
@@ -255,17 +253,19 @@ gaspi_bcast (gaspi_segment_id_t const buf,
             if (dst < nProc) {
                 SUCCESS_OR_DIE
                     ( gaspi_write_notify
-                      ( buf, doffset, dst
-                      , buf, doffset, ceil(elem_cnt * threshold) * type_size
+                      ( buffer.segment, doffset, dst
+                      , buffer.segment, doffset, ceil(elem_cnt * threshold) * type_size
                       , data_available, iProc+1 // +1 so that the value is not zero
                       , queue_id, timeout_ms
                       )
                     );
             }
         } else if ((1 << (i+1)) > iProc) {
-  	        wait_or_die ( buf, data_available, parent+1 );  
+  	        wait_or_die ( buffer.segment, data_available, parent+1 );  
         }
     }
+
+    gaspi_barrier(GASPI_GROUP_ALL, timeout_ms);
 
     return GASPI_SUCCESS;
 }

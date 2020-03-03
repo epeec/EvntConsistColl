@@ -10,17 +10,15 @@
 
 #include "now.h"
 
-static void swap(double *a, double *b)
-{
-  double tmp = *a;
+template <class T> static void swap(T *a, T *b) {
+  T tmp = *a;
   *a = *b;
   *b = tmp;
 }
 
-void sort_median(double *begin, double *end)
-{
-  double *ptr;
-  double *split;
+template <class T> void sort_median(T *begin, T *end) {
+  T *ptr;
+  T *split;
   if (end - begin <= 1)
     return;
   ptr = begin;
@@ -41,11 +39,11 @@ template <class T> void fill_array(const int n, T a[]) {
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
 
     for (int i=0; i < n; i++) {
-        a[i] = i + iProc + 1;
+        a[i] = i + 1;
     }
 }
 
-void check(const int VLEN, const double* res) {
+template <class T> void check(const int VLEN, const T* res, const int proc) {
     gaspi_rank_t iProc, nProc;
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
@@ -53,14 +51,14 @@ void check(const int VLEN, const double* res) {
     bool correct = true;
 
     for (int i = 0; i < VLEN; i++) {
-        double resval = (nProc * (nProc + 1)) / 2 + nProc * i;
+        T resval = i + 1;
         if (res[i] != resval) {
             std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
             correct = false;
         }
     }
 
-    if (iProc == 0) {
+    if (iProc == proc) {
         if (correct) 
     	    std::cout << "\n[Std Reduce] Successful run!\n";
         else 
@@ -68,7 +66,7 @@ void check(const int VLEN, const double* res) {
     }
 }
 
-void check_evnt(const int VLEN, const double* res, const double threshold) {
+template <class T> void check_evnt(const int VLEN, const T* res, const double threshold, const int proc) {
     gaspi_rank_t iProc, nProc;
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
@@ -76,20 +74,14 @@ void check_evnt(const int VLEN, const double* res, const double threshold) {
     bool correct = true;
 
     for (int i = 0; i < ceil(threshold * VLEN); i++) {
-        double resval = (nProc * (nProc + 1)) / 2 + nProc * i;
+        T resval = i + 1;
         if (res[i] != resval) {
             std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
             correct = false;
         }
     }
-    for (int i = ceil(threshold * VLEN); i < VLEN; i++) {
-        if (res[i] != 0.0) {
-            std::cerr << i << ' ' << res[i] << ' ' << 0.0 << '\n';
-            correct = false;
-        }
-    }
 
-    if (iProc == 0) {
+    if (iProc == proc) {
         if (correct) 
     	    std::cout << "\n[EvntConsist Reduce] Successful run!\n";
         else 
@@ -97,8 +89,8 @@ void check_evnt(const int VLEN, const double* res, const double threshold) {
     }
 }
 
-// testing regular gaspi reduce that is based on binomial tree
-void test_reduce(const int VLEN, const int numIters, const bool checkRes){
+// testing regular gaspi bcast that is based on binomial tree
+void test_bcast(const int VLEN, const int numIters, const bool checkRes){
 
   gaspi_rank_t iProc, nProc;
   SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -109,36 +101,23 @@ void test_reduce(const int VLEN, const int numIters, const bool checkRes){
   gaspi_rank_t root = 0;
   gaspi_queue_id_t queue_id = 0;
 
-  gaspi_segment_id_t const segment_send_id = 0;
-  gaspi_segment_id_t const segment_recv_id = 1;
+  gaspi_segment_id_t const segment_id = 0;
   gaspi_size_t       const segment_size = VLEN * type_size;
 
   SUCCESS_OR_DIE
     ( gaspi_segment_create
-      ( segment_send_id, segment_size
+      ( segment_id, segment_size
       , GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_INITIALIZED
       )
     );
 
-  SUCCESS_OR_DIE
-    ( gaspi_segment_create
-      ( segment_recv_id, 2 * segment_size
-      , GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_INITIALIZED
-      )
-    );
-
-  segmentBuffer buffer_send = {segment_send_id, 0};    
-  segmentBuffer buffer_recv = {segment_recv_id, 0};    
-  segmentBuffer buffer_temp = {segment_recv_id, segment_size}; // large offset because buffer_temp is within the same segment   
+  segmentBuffer buffer = {segment_id, 0};    
   
-  gaspi_pointer_t send_array, recv_array;
-  SUCCESS_OR_DIE( gaspi_segment_ptr (segment_send_id, &send_array) );
-  SUCCESS_OR_DIE( gaspi_segment_ptr (segment_recv_id, &recv_array) );
- 
-  double * src_arr = (double *)(send_array);
-  double * rcv_arr = (double *)(recv_array);
+  gaspi_pointer_t array;
+  SUCCESS_OR_DIE( gaspi_segment_ptr (segment_id, &array) );
+  double *arr = (double *)(array);
 
-  fill_array(VLEN, src_arr);
+  fill_array(VLEN, arr);
 
   if (iProc == root) {
     printf("%d \t", VLEN);
@@ -150,9 +129,11 @@ void test_reduce(const int VLEN, const int numIters, const bool checkRes){
 
     double time = -now();
 
-    gaspi_reduce(buffer_send, buffer_recv, buffer_temp, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, root, queue_id, GASPI_BLOCK);
+    gaspi_bcast(buffer, VLEN, GASPI_TYPE_DOUBLE, root, queue_id, GASPI_BLOCK);
 
     time += now();
+
+    gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
 
     t_median[itime] = time;
   }
@@ -163,15 +144,15 @@ void test_reduce(const int VLEN, const int numIters, const bool checkRes){
     printf("%10.6f \n", t_median[numIters/2]);
   }
 
-  if (iProc == root && checkRes) {    
-    check(VLEN, rcv_arr);
+  if (iProc == (nProc - 1) && checkRes) {    
+    check(VLEN, arr, nProc - 1);
   }
   
   wait_for_flush_queues();
 }
 
-// testing eventually consistent gaspi reduce that is based on binomial tree
-void test_evnt_consist_reduce(const int VLEN, const int numIters, const bool checkRes){
+// testing eventually consistent gaspi bcast that is based on binomial tree
+void test_evnt_consist_bcast(const int VLEN, const int numIters, const bool checkRes){
 
   gaspi_rank_t iProc, nProc;
   SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -182,36 +163,24 @@ void test_evnt_consist_reduce(const int VLEN, const int numIters, const bool che
   gaspi_rank_t root = 0;
   gaspi_queue_id_t queue_id = 0;
 
-  gaspi_segment_id_t const segment_send_id = 2;
-  gaspi_segment_id_t const segment_recv_id = 3;
+  gaspi_segment_id_t const segment_id = 2;
   gaspi_size_t       const segment_size = VLEN * type_size;
 
   SUCCESS_OR_DIE
     ( gaspi_segment_create
-      ( segment_send_id, segment_size
+      ( segment_id, segment_size
       , GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_INITIALIZED
       )
     );
 
-  SUCCESS_OR_DIE
-    ( gaspi_segment_create
-      ( segment_recv_id, 2 * segment_size
-      , GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_INITIALIZED
-      )
-    );
-
-  segmentBuffer buffer_send = {segment_send_id, 0};    
-  segmentBuffer buffer_recv = {segment_recv_id, 0};    
-  segmentBuffer buffer_temp = {segment_recv_id, segment_size}; // large offset because buffer_temp is within the same segment   
+  segmentBuffer buffer = {segment_id, 0};    
     
-  gaspi_pointer_t send_array, recv_array;
-  SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_send.segment, &send_array) );
-  SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_recv.segment, &recv_array) );
+  gaspi_pointer_t array;
+  SUCCESS_OR_DIE( gaspi_segment_ptr (buffer.segment, &array) );
  
-  double *src_arr = (double *)(send_array);
-  double *rcv_arr = (double *)(recv_array);
+  double *arr = (double *)(array);
 
-  fill_array(VLEN, src_arr);
+  fill_array(VLEN, arr);
 
   // 25% 50% 75% and 100%
   if (iProc == 0) {
@@ -226,7 +195,7 @@ void test_evnt_consist_reduce(const int VLEN, const int numIters, const bool che
       for (int itime = 0; itime < numIters; itime++) { 
         double time = -now();
 
-        gaspi_reduce(buffer_send, buffer_recv, buffer_temp, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
+        gaspi_bcast(buffer, VLEN, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
   
         time += now();
 
@@ -239,8 +208,8 @@ void test_evnt_consist_reduce(const int VLEN, const int numIters, const bool che
         printf("%10.6f \t", t_median[numIters/2]);
       }
 
-      if (iProc == root && checkRes) {    
-        check_evnt(VLEN, rcv_arr, threshold);
+      if (iProc == (nProc - 1) && checkRes) {    
+        check_evnt(VLEN, arr, threshold, nProc - 1);
       }
   }
 
@@ -267,9 +236,9 @@ int main(int argc, char** argv) {
   const int numIters = atoi(argv[2]);
   const bool checkRes = (argc==4)?true:false;
 
-  //test_reduce(VLEN, numIters, checkRes); 
+  //test_bcast(VLEN, numIters, checkRes); 
 
-  test_evnt_consist_reduce(VLEN, numIters, checkRes); 
+  test_evnt_consist_bcast(VLEN, numIters, checkRes); 
  
   SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
 
