@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#include "now_mpi.h"
+#include "now.h"
 
 template <class T> static void swap(T *a, T *b) {
     T tmp = *a;

@@ -1,6 +1,6 @@
 
 #add executable called "bcast" that is built from the source file
-file(GLOB_RECURSE BCAST_SOURCES bcast.cpp queue.cpp)
+file(GLOB_RECURSE BCAST_SOURCES bcast.cpp)
 add_executable (bcast ${BCAST_SOURCES})
 
 target_include_directories (bcast PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -18,7 +18,7 @@ target_link_libraries (bcast
 
 #add executable called "bcast_bench" that is built from the source file
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-file(GLOB_RECURSE REDUCE_SOURCES bcast_bench.cpp queue.cpp now.cpp)
+file(GLOB_RECURSE REDUCE_SOURCES bcast_bench.cpp)
 add_executable (bcast_bench ${REDUCE_SOURCES})
 
 target_include_directories (bcast_bench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -33,7 +33,7 @@ target_link_libraries (bcast_bench
 
 
 #add executable called "reduce" that is built from the source file
-file(GLOB_RECURSE REDUCE_SOURCES reduce.cpp queue.cpp)
+file(GLOB_RECURSE REDUCE_SOURCES reduce.cpp)
 add_executable (reduce ${REDUCE_SOURCES})
 
 target_include_directories (reduce PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -49,7 +49,7 @@ target_link_libraries (reduce
 
 #add executable called "reduce_bench" that is built from the source file
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-file(GLOB_RECURSE REDUCE_SOURCES reduce_bench.cpp queue.cpp now.cpp)
+file(GLOB_RECURSE REDUCE_SOURCES reduce_bench.cpp)
 add_executable (reduce_bench ${REDUCE_SOURCES})
 
 target_include_directories (reduce_bench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -65,7 +65,7 @@ target_link_libraries (reduce_bench
 
 #add executable called "allreduce_bench" that is built from the source file
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-file(GLOB_RECURSE ALLREDUCE_SOURCES allreduce_bench.cpp queue.cpp now.cpp)
+file(GLOB_RECURSE ALLREDUCE_SOURCES allreduce_bench.cpp)
 add_executable (allreduce_bench ${ALLREDUCE_SOURCES})
 
 target_include_directories (allreduce_bench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
