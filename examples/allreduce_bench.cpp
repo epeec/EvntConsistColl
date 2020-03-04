@@ -12,6 +12,30 @@
 
 #include "now.h"
 
+template <class T> static void swap(T *a, T *b) {
+    T tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
+
+template <class T> void sort_median(T *begin, T *end) {
+    T *ptr;
+    T *split;
+    if (end - begin <= 1)
+        return;
+    ptr = begin;
+    split = begin + 1;
+    while (++ptr != end) {
+        if (*ptr < *begin) {
+            swap(ptr, split);
+            ++split;
+        }
+    }
+    swap(begin, split - 1);
+    sort_median(begin, split - 1);
+    sort_median(split, end);
+}
+
 template <class T> void fill_array(T a[],
          const int n) {
     gaspi_rank_t iProc;
@@ -26,7 +50,6 @@ void check(const int VLEN, const double* res) {
     gaspi_rank_t iProc, nProc;
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
-
     
     bool correct = true;
 
@@ -52,6 +75,7 @@ void test_ring_allreduce(const int VLEN, const int numIters, const bool checkRes
     gaspi_rank_t iProc, nProc; 
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
+    int root = 0;
 
     const int type_size = sizeof (double);
     gaspi_segment_id_t const segment_send = 0;
@@ -87,28 +111,30 @@ void test_ring_allreduce(const int VLEN, const int numIters, const bool checkRes
 
     gaspi_queue_id_t queue_id = 0;
 
-    timeval timeStart, timeStop;
-    gettimeofday(&timeStart, NULL);
-
-    for (int iter=0; iter < numIters; iter++) {
-        gaspi_ring_allreduce(buffer_send, buffer_recv, buffer_temp, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, queue_id, GASPI_BLOCK);
+    if (iProc == root) {
+        printf("%d \t", VLEN);
     }
 
-    gettimeofday(&timeStop, NULL);
+    double *t_median = (double *) calloc(numIters, sizeof(double));
+    for (int iter=0; iter < numIters; iter++) {
+        double time = -now();
+
+        gaspi_ring_allreduce(buffer_send, buffer_recv, buffer_temp, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, queue_id, GASPI_BLOCK);
+
+        time += now();
+        t_median[iter] = time;
+
+        gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
+    }
+  
+    sort_median(&t_median[0],&t_median[numIters-1]);
+
+    if (iProc == root) {
+        printf("%10.6f \n", t_median[numIters/2]);
+    }
 
     if (checkRes) {    
         check(VLEN, rcv_arr);
-    }
-
-    if (iProc == 0) {
-        const double numGigaBytes
-            = 2. * VLEN * type_size * (nProc - 1) / nProc  * numIters
-             / 1024. / 1024. / 1024.;
-        const double seconds = timeStop.tv_sec - timeStart.tv_sec
-                           + 1e-6 * (timeStop.tv_usec - timeStart.tv_usec);
-        std::cout << "Total runtime " << seconds << " seconds, "
-                << seconds / numIters << " seconds per reduce, "
-                << numGigaBytes / seconds << " GiB/s." << std::endl;
     }
 
     wait_for_flush_queues();
@@ -118,13 +144,13 @@ void test_ring_allreduce(const int VLEN, const int numIters, const bool checkRes
 int main(int argc, char** argv) {
 
     if ((argc < 3) || (argc > 4)) {
-      std::cerr << argv[0] << ": Usage " << argv[0] << " <length in bytes>"
-                << " <num iterations> [check]"
-                << std::endl;
+        std::cerr << argv[0] << ": Usage " << argv[0] << " <length in elements>"
+                  << " <num iterations> [check]"
+                  << std::endl;
       return -1;
     }
 
-    static const int VLEN = atoi(argv[1]) / sizeof(double);
+    static const int VLEN = atoi(argv[1]);
     const int numIters = atoi(argv[2]);
     const bool checkRes = (argc==4)?true:false;
 

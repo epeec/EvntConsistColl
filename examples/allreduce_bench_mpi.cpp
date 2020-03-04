@@ -5,6 +5,32 @@
 #include <unistd.h>
 #include <sys/time.h>
 
+#include "now_mpi.h"
+
+template <class T> static void swap(T *a, T *b) {
+    T tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
+
+template <class T> void sort_median(T *begin, T *end) {
+    T *ptr;
+    T *split;
+    if (end - begin <= 1)
+        return;
+    ptr = begin;
+    split = begin + 1;
+    while (++ptr != end) {
+        if (*ptr < *begin) {
+            swap(ptr, split);
+            ++split;
+        }
+    }
+    swap(begin, split - 1);
+    sort_median(begin, split - 1);
+    sort_median(split, end);
+}
+
 template <class T> void fill_array(T a[],
          const int n) {
     int iProc;
@@ -44,6 +70,7 @@ void test_allreduce(const int VLEN, const int numIters, const bool checkRes){
     int iProc, nProc;
     MPI_Comm_rank(MPI_COMM_WORLD, &iProc);
     MPI_Comm_size(MPI_COMM_WORLD, &nProc);
+    int root = 0;
 
     const int type_size = sizeof (double);
 
@@ -54,30 +81,31 @@ void test_allreduce(const int VLEN, const int numIters, const bool checkRes){
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    timeval timeStart, timeStop;
-    gettimeofday(&timeStart, NULL);
-
-    for (int iter=0; iter < numIters; iter++) {
-        MPI_Allreduce(src_arr, rcv_arr, VLEN, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    if (iProc == root) {
+        printf("%d \t", VLEN);
     }
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    double *t_median = (double *) calloc(numIters, sizeof(double));
 
-    gettimeofday(&timeStop, NULL);
+    for (int iter=0; iter < numIters; iter++) {
+        double time = -now();
+
+        MPI_Allreduce(src_arr, rcv_arr, VLEN, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+        time += now();
+        t_median[iter] = time;
+
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+  
+    sort_median(&t_median[0],&t_median[numIters-1]);
+
+    if (iProc == root) {
+        printf("%10.6f \n", t_median[numIters/2]);
+    }
 
     if (checkRes) {    
         check(VLEN, rcv_arr);
-    }
-
-    if (iProc == 0) {
-        const double numGigaBytes
-            = 2. * VLEN * type_size * (nProc - 1) / nProc  * numIters
-             / 1024. / 1024. / 1024.;
-        const double seconds = timeStop.tv_sec - timeStart.tv_sec
-                           + 1e-6 * (timeStop.tv_usec - timeStart.tv_usec);
-        std::cout << "Total runtime " << seconds << " seconds, "
-                << seconds / numIters << " seconds per reduce, "
-                << numGigaBytes / seconds << " GiB/s." << std::endl;
     }
 }
 
@@ -85,13 +113,13 @@ void test_allreduce(const int VLEN, const int numIters, const bool checkRes){
 int main(int argc, char** argv) {
 
     if ((argc < 3) || (argc > 4)) {
-      std::cerr << argv[0] << ": Usage " << argv[0] << " <length in bytes>"
-                << " <num iterations> [check]"
-                << std::endl;
+        std::cerr << argv[0] << ": Usage " << argv[0] << " <length in elements>"
+                  << " <num iterations> [check]"
+                  << std::endl;
       return -1;
     }
 
-    static const int VLEN = atoi(argv[1]) / sizeof(double);
+    static const int VLEN = atoi(argv[1]);
     const int numIters = atoi(argv[2]);
     const bool checkRes = (argc==4)?true:false;
 

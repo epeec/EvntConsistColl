@@ -193,6 +193,7 @@ gaspi_bcast (segmentBuffer const buffer,
         }
     }
 
+    // TODO: how to eliminate this?
     gaspi_barrier(GASPI_GROUP_ALL, timeout_ms);
  
     return GASPI_SUCCESS;
@@ -265,6 +266,7 @@ gaspi_bcast (segmentBuffer const buffer,
         }
     }
 
+    // TODO: how to eliminate this?
     gaspi_barrier(GASPI_GROUP_ALL, timeout_ms);
 
     return GASPI_SUCCESS;
