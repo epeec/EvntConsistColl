@@ -11,6 +11,7 @@
 #include "testsome.h"
 #include "queue.h"
 #include "waitsome.h"
+#include "wait_if_queue_full.h"
 
 /** Broadcast collective operation.
  *
@@ -53,17 +54,17 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
     		if (k == root) 
 	    		continue;
 
-	    	SUCCESS_OR_DIE
-			    ( gaspi_write_notify
-			      ( buf, doffset, k
-			      , buf, doffset, elem_cnt * type_size
-			      , data_available, k+1 // +1 so that the value is not zero
-			      , queue_id, timeout_ms
-			      )
-			    );
+	    	WAIT_IF_QUEUE_FULL( 
+                gaspi_write_notify(buf, doffset, k
+			          , buf, doffset, elem_cnt * type_size
+			          , data_available, k+1 // +1 so that the value is not zero
+			          , queue_id, timeout_ms
+                )
+                , queue_id
+			);
 	    }
     } else {
-  	    wait_or_die ( buf, data_available, iProc+1 );  
+  	    wait_or_die( buf, data_available, iProc+1 );  
     }
 
     return GASPI_SUCCESS;
@@ -112,18 +113,17 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
 	    	if (k == root) 
 		    	continue;
 
-	    	SUCCESS_OR_DIE
-			    ( gaspi_write_notify
-			      ( buf, doffset, k
-			      , buf, doffset, ceil(elem_cnt * threshold) * type_size
-			      , data_available, root+1 // +1 so that the value is not zero
-			      , queue_id, timeout_ms
-			      )
-			    );
-
+	    	WAIT_IF_QUEUE_FULL( 
+			    gaspi_write_notify(buf, doffset, k
+			        , buf, doffset, ceil(elem_cnt * threshold) * type_size
+			        , data_available, root+1 // +1 so that the value is not zero
+			        , queue_id, timeout_ms
+                )
+                , queue_id
+			);
 	    }
     } else {
-    	wait_or_die ( buf, data_available, root+1 );  
+    	wait_or_die( buf, data_available, root+1 );  
     }
 
     return GASPI_SUCCESS;
@@ -179,17 +179,17 @@ gaspi_bcast (segmentBuffer const buffer,
         if (iProc < pow2i) {
             int dst = iProc + pow2i;
             if (dst < nProc) {
-                SUCCESS_OR_DIE
-                    ( gaspi_write_notify
-                      ( buffer.segment, doffset, dst
-                      , buffer.segment, doffset, elem_cnt * type_size
-                      , data_available, iProc+1 // +1 so that the value is not zero
-                      , queue_id, timeout_ms 
-                      )
-                    );
+	    	    WAIT_IF_QUEUE_FULL( 
+                    gaspi_write_notify( buffer.segment, doffset, dst
+                        , buffer.segment, doffset, elem_cnt * type_size
+                        , data_available, iProc+1 // +1 so that the value is not zero
+                        , queue_id, timeout_ms 
+                    )
+                    , queue_id
+                );
             }
         } else if ((1 << (i+1)) > iProc) {
-  	        wait_or_die ( buffer.segment, data_available, parent+1 );  
+  	        wait_or_die( buffer.segment, data_available, parent+1 );  
         }
     }
 
@@ -252,17 +252,17 @@ gaspi_bcast (segmentBuffer const buffer,
         if (iProc < pow2i) {
             int dst = iProc + pow2i;
             if (dst < nProc) {
-                SUCCESS_OR_DIE
-                    ( gaspi_write_notify
-                      ( buffer.segment, doffset, dst
-                      , buffer.segment, doffset, ceil(elem_cnt * threshold) * type_size
-                      , data_available, iProc+1 // +1 so that the value is not zero
-                      , queue_id, timeout_ms
-                      )
-                    );
+	    	    WAIT_IF_QUEUE_FULL( 
+                    gaspi_write_notify( buffer.segment, doffset, dst
+                        , buffer.segment, doffset, ceil(elem_cnt * threshold) * type_size
+                        , data_available, iProc+1 // +1 so that the value is not zero
+                        , queue_id, timeout_ms
+                    )
+                    , queue_id
+                );
             }
         } else if ((1 << (i+1)) > iProc) {
-  	        wait_or_die ( buffer.segment, data_available, parent+1 );  
+  	        wait_or_die( buffer.segment, data_available, parent+1 );  
         }
     }
 
@@ -356,18 +356,18 @@ gaspi_reduce (const segmentBuffer buffer_send,
         if (bst.isactive && (children_count == 0) && (pow2i <= iProc) && (iProc < (1 << (i+1)))) {
             // wait for notification that the data can be sent
             gaspi_notification_id_t data_available = iProc;
-            wait_or_die ( buffer_receive.segment, data_available, bst.parent + 1 );  
+            wait_or_die( buffer_receive.segment, data_available, bst.parent + 1 );  
 
             // send the data to the parent
             data_available = iProc;
-            SUCCESS_OR_DIE
-                ( gaspi_write_notify
-                  ( buffer_receive.segment, buffer_receive.offset, bst.parent
-                  , buffer_tmp.segment, buffer_tmp.offset, segment_size
-                  , data_available, bst.parent+1 // +1 so that the value is not zero
-                  , queue_id, timeout_ms
-                  )
-                );
+	    	WAIT_IF_QUEUE_FULL( 
+                gaspi_write_notify( buffer_receive.segment, buffer_receive.offset, bst.parent
+                    , buffer_tmp.segment, buffer_tmp.offset, segment_size
+                    , data_available, bst.parent+1 // +1 so that the value is not zero
+                    , queue_id, timeout_ms
+                )
+                , queue_id
+            );
 
             bst.isactive = false;
 
@@ -377,23 +377,21 @@ gaspi_reduce (const segmentBuffer buffer_send,
             gaspi_rank_t rank = bst.children[children_count-1];        
             gaspi_notification_id_t id = rank;
             gaspi_notification_t val = iProc + 1;
-            SUCCESS_OR_DIE
-                ( gaspi_notify(buffer_receive.segment
-                    , rank
-                    , id
-                    , val
-                    , queue_id
-                    , timeout_ms)
-                );
+
+	    	WAIT_IF_QUEUE_FULL( 
+                gaspi_notify(buffer_receive.segment
+                    , rank, id, val
+                    , queue_id, timeout_ms
+                )
+                , queue_id
+            );
         
             // receive data
             val = iProc + 1;
             waitsome_and_reset(buffer_tmp.segment
-                       , bst.children[0]
-                       , nProc - bst.children[0]
-                       , &id
-                       , &val
-                       );
+                , bst.children[0], nProc - bst.children[0]
+                , &id, &val
+            );
             ASSERT(id >= bst.children[0]);
             ASSERT(id <= bst.children[bst.children_count-1]);
 
@@ -496,18 +494,18 @@ gaspi_reduce (const segmentBuffer buffer_send,
         if (bst.isactive && (children_count == 0) && (pow2i <= iProc) && (iProc < (1 << (i+1)))) {
             // wait for notification that the data can be sent
             gaspi_notification_id_t data_available = iProc;
-            wait_or_die ( buffer_receive.segment, data_available, bst.parent + 1 );  
+            wait_or_die( buffer_receive.segment, data_available, bst.parent + 1 );  
 
             // send the data to the parent
             data_available = iProc;
-            SUCCESS_OR_DIE
-                ( gaspi_write_notify
-                  ( buffer_receive.segment, buffer_receive.offset, bst.parent
-                  , buffer_tmp.segment, buffer_tmp.offset, segment_size
-                  , data_available, bst.parent+1 // +1 so that the value is not zero
-                  , queue_id, timeout_ms
-                  )
-                );
+	    	WAIT_IF_QUEUE_FULL( 
+                gaspi_write_notify( buffer_receive.segment, buffer_receive.offset, bst.parent
+                    , buffer_tmp.segment, buffer_tmp.offset, segment_size
+                    , data_available, bst.parent+1 // +1 so that the value is not zero
+                    , queue_id, timeout_ms
+                )
+                , queue_id
+            );
             bst.isactive = false;
 
         } else if (bst.isactive && (pow2i > iProc) && ((iProc + pow2i) < nProc)) {
@@ -516,23 +514,20 @@ gaspi_reduce (const segmentBuffer buffer_send,
             gaspi_rank_t rank = bst.children[children_count-1];        
             gaspi_notification_id_t id = rank;
             gaspi_notification_t val = iProc + 1;
-            SUCCESS_OR_DIE
-                ( gaspi_notify(buffer_receive.segment
-                    , rank
-                    , id
-                    , val
-                    , queue_id
-                    , timeout_ms)
-                );
+	    	WAIT_IF_QUEUE_FULL( 
+                gaspi_notify(buffer_receive.segment
+                    , rank, id, val
+                    , queue_id, timeout_ms
+                )
+                , queue_id
+            );
         
             // receive data
             val = iProc+1;
             waitsome_and_reset(buffer_tmp.segment
-                       , bst.children[0]
-                       , nProc - bst.children[0]
-                       , &id
-                       , &val
-                       );
+                , bst.children[0], nProc - bst.children[0]
+                , &id, &val
+            );
             ASSERT(id >= bst.children[0]);
             ASSERT(id <= bst.children[bst.children_count-1]);
 
@@ -590,15 +585,15 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
     double *rcv_array = (double *)((char*)rcv_arr + buffer_receive.offset);
 
     // Partition elements of array into nProc chunks
-    const int segment_size = elem_cnt / nProc;
-    std::vector<int> segment_sizes(nProc, segment_size);
+    const unsigned int segment_size = elem_cnt / nProc;
+    std::vector<unsigned int> segment_sizes(nProc, segment_size);
 
     int segment_residual = elem_cnt % nProc;
     for (int i = 0; i < segment_residual; i++) 
         segment_sizes[i]++;
 
     // Compute where each chunk ends
-    std::vector<int> segment_ends(nProc);
+    std::vector<unsigned int> segment_ends(nProc);
     segment_ends[0] = segment_sizes[0];
     for (int i = 1; i < nProc; i++) 
         segment_ends[i] = segment_sizes[i] + segment_ends[i-1];
@@ -635,26 +630,27 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
 
         int segment_start = segment_ends[send_chunk] - segment_sizes[send_chunk];
 
-        gaspi_write_notify(buffer_receive.segment,
-          buffer_receive.offset + segment_start * type_size, // offset
-          send_to,
-          buffer_tmp.segment,
-          buffer_tmp.offset, // offset
-          segment_sizes[send_chunk] * type_size, 
-          notif,
-          i + iProc + 1, // notification value: +1 to avoid 0. It equals to recvfrom + 1 on receiver side
-          queue_id,
-          GASPI_BLOCK);
+	    WAIT_IF_QUEUE_FULL( 
+            gaspi_write_notify(buffer_receive.segment
+                , buffer_receive.offset + segment_start * type_size // offset
+                , send_to, buffer_tmp.segment, buffer_tmp.offset // offset
+                , segment_sizes[send_chunk] * type_size, notif
+                , i + iProc + 1 // notification value: +1 to avoid 0. It equals to recvfrom + 1 on receiver side
+                , queue_id, GASPI_BLOCK
+            )
+            , queue_id
+        );
 
         // wait for notification that the data arrived
-        wait_or_die ( buffer_tmp.segment, notif, i + recv_from + 1 );  
+        wait_or_die( buffer_tmp.segment, notif, i + recv_from + 1 );  
 
         // reduce
         segment_start = segment_ends[recv_chunk] - segment_sizes[recv_chunk];
-        for (int i = 0; i < segment_sizes[recv_chunk]; i++) {
-            rcv_array[segment_start + i] += buf_array[i];
+        for (unsigned int j = 0; j < segment_sizes[recv_chunk]; j++) {
+            rcv_array[segment_start + j] += buf_array[j];
         }
 
+        // TODO: avoid this barrier
         gaspi_barrier(GASPI_GROUP_ALL, timeout_ms);
     }
 
@@ -670,26 +666,27 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
 
         int segment_start = segment_ends[send_chunk] - segment_sizes[send_chunk];
 
-        gaspi_write_notify(buffer_receive.segment,
-          buffer_receive.offset + segment_start * type_size, // offset
-          send_to,
-          buffer_tmp.segment,
-          buffer_tmp.offset, // offset 
-          segment_sizes[send_chunk] * type_size, 
-          notif,
-          i + iProc + 1, // notification value: +1 to avoid 0. It equals to recvfrom + 1 on receiver side
-          queue_id,
-          GASPI_BLOCK);
+	    WAIT_IF_QUEUE_FULL( 
+            gaspi_write_notify(buffer_receive.segment
+                , buffer_receive.offset + segment_start * type_size // offset
+                , send_to, buffer_tmp.segment, buffer_tmp.offset // offset 
+                , segment_sizes[send_chunk] * type_size, notif
+                , i + iProc + 1 // notification value: +1 to avoid 0. It equals to recvfrom + 1 on receiver side
+                , queue_id, GASPI_BLOCK
+            )
+            , queue_id
+        );
 
         // wait for notification that the data arrived
-        wait_or_die ( buffer_tmp.segment, notif, i + recv_from + 1 );  
+        wait_or_die( buffer_tmp.segment, notif, i + recv_from + 1 );  
 
         // copy
         segment_start = segment_ends[recv_chunk] - segment_sizes[recv_chunk];
-        for (int i = 0; i < segment_sizes[recv_chunk]; i++) {
-            rcv_array[segment_start + i] = buf_array[i];           
+        for (unsigned int j = 0; j < segment_sizes[recv_chunk]; j++) {
+            rcv_array[segment_start + j] = buf_array[j];           
         }         
 
+        // TODO: avoid this barrier
         gaspi_barrier(GASPI_GROUP_ALL, timeout_ms);
     }
 
