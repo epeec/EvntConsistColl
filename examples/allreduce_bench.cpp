@@ -56,16 +56,17 @@ void check(const int VLEN, const double* res) {
     for (int i = 0; i < VLEN; i++) {
         double resval = (nProc * (nProc + 1)) / 2 + nProc * i;
         if (res[i] != resval) {
-            std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
+            //std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
             correct = false;
         }
     }
 
     if (iProc == 0) {
-        if (correct) 
+        if (correct) {
     	    std::cout << "Successful run!\n";
-        else 
+        } else { 
     	    std::cout << "Check FAIL!\n";
+        }
     }
 }
 
@@ -91,7 +92,7 @@ void test_ring_allreduce(const int VLEN, const int numIters, const bool checkRes
 
     SUCCESS_OR_DIE
       ( gaspi_segment_create
-        ( segment_recv, segment_size + ((VLEN + nProc - 1) / nProc) * type_size
+        ( segment_recv, segment_size + 2 * ((VLEN + nProc - 1) / nProc) * type_size
         , GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_INITIALIZED
         )
       );
@@ -125,16 +126,16 @@ void test_ring_allreduce(const int VLEN, const int numIters, const bool checkRes
         t_median[iter] = time;
 
         gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
+
+        if (checkRes) {    
+            check(VLEN, rcv_arr);
+        }
     }
   
     sort_median(&t_median[0],&t_median[numIters-1]);
 
     if (iProc == root) {
         printf("%10.6f \n", t_median[numIters/2]);
-    }
-
-    if (checkRes) {    
-        check(VLEN, rcv_arr);
     }
 
     wait_for_flush_queues();
