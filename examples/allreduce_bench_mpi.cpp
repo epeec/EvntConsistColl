@@ -96,16 +96,16 @@ void test_allreduce(const int VLEN, const int numIters, const bool checkRes){
         t_median[iter] = time;
 
         MPI_Barrier(MPI_COMM_WORLD);
+
+        if (checkRes) {    
+            check(VLEN, rcv_arr);
+        }
     }
   
     sort_median(&t_median[0],&t_median[numIters-1]);
 
     if (iProc == root) {
         printf("%10.6f \n", t_median[numIters/2]);
-    }
-
-    if (checkRes) {    
-        check(VLEN, rcv_arr);
     }
 }
 

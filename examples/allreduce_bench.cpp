@@ -56,7 +56,7 @@ void check(const int VLEN, const double* res) {
     for (int i = 0; i < VLEN; i++) {
         double resval = (nProc * (nProc + 1)) / 2 + nProc * i;
         if (res[i] != resval) {
-            //std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
+            std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
             correct = false;
         }
     }

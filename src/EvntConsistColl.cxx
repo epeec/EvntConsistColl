@@ -142,7 +142,7 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
  * error, GASPI_TIMEOUT in case of timeout.
  */
 gaspi_return_t
-gaspi_bcast (segmentBuffer const buffer,
+gaspi_bcast (segmentBuffer buffer,
              const gaspi_number_t elem_cnt,
              const gaspi_datatype_t type,
              const gaspi_number_t root,
@@ -155,8 +155,6 @@ gaspi_bcast (segmentBuffer const buffer,
 
     if (nProc <= 1)
         return GASPI_SUCCESS;
-
-    gaspi_notification_id_t data_available = 0;
 
     // get size of type, see GASPI.h for details
     gaspi_number_t type_size = 0;
@@ -179,22 +177,60 @@ gaspi_bcast (segmentBuffer const buffer,
         if (iProc < pow2i) {
             int dst = iProc + pow2i;
             if (dst < nProc) {
+                gaspi_notification_id_t data_available = dst;
 	    	    WAIT_IF_QUEUE_FULL( 
                     gaspi_write_notify( buffer.segment, doffset, dst
                         , buffer.segment, doffset, elem_cnt * type_size
-                        , data_available, iProc+1 // +1 so that the value is not zero
+                        , data_available, iProc + 1// +1 so that the value is not zero
                         , queue_id, timeout_ms 
                     )
                     , queue_id
                 );
             }
         } else if ((1 << (i+1)) > iProc) {
+            gaspi_notification_id_t data_available = iProc;
   	        wait_or_die( buffer.segment, data_available, parent+1 );  
+            
+//            // ackowledge parent that the data has arrived
+//            gaspi_notification_id_t id = iProc;
+//            gaspi_notification_t val = iProc;
+//	    	WAIT_IF_QUEUE_FULL( 
+//                gaspi_notify(buffer.segment
+//                    , parent, id, val
+//                    , queue_id, timeout_ms
+//                )
+//                , queue_id
+//            );
         }
     }
 
-    // TODO: how to eliminate this?
-    gaspi_barrier(GASPI_GROUP_ALL, timeout_ms);
+//    // waiting for notificaitons from children
+//    bst_struct bst;
+//    bst.children = (gaspi_rank_t *) valloc(sizeof(gaspi_rank_t) * (ceil(log2(nProc)) - 1));
+//    int children_count = 0;
+//    for (int i = 0; i < upper_bound; i++) {
+//        if ((iProc == root) || (i > log2(iProc))) {
+//            int k = iProc + (1 << i);
+//            if ( k < nProc ) {
+//                bst.children[children_count] = k;
+//                children_count++;
+//            }
+//        }
+//    }
+//    bst.children_count = children_count;
+//
+//    for (int i = 0; i < upper_bound - 1; i++) {
+//        if (children_count > 0) {
+//            gaspi_notification_id_t id;
+//            gaspi_notification_t val;
+//            waitsome_and_reset(buffer.segment
+//                , bst.children[0], nProc - bst.children[0]
+//                , &id, &val
+//            );
+//            ASSERT(id >= bst.children[0]);
+//            //ASSERT(id <= bst.children[bst.children_count-1]);
+//        }
+//    }
  
     return GASPI_SUCCESS;
 }
@@ -229,8 +265,6 @@ gaspi_bcast (segmentBuffer const buffer,
     if (nProc <= 1)
         return GASPI_SUCCESS;
 
-    gaspi_notification_id_t data_available = 0;
-
     // get size of type, see GASPI.h for details
     gaspi_number_t type_size = 0;
     if (type >= 3) 
@@ -252,6 +286,7 @@ gaspi_bcast (segmentBuffer const buffer,
         if (iProc < pow2i) {
             int dst = iProc + pow2i;
             if (dst < nProc) {
+                gaspi_notification_id_t data_available = iProc;
 	    	    WAIT_IF_QUEUE_FULL( 
                     gaspi_write_notify( buffer.segment, doffset, dst
                         , buffer.segment, doffset, ceil(elem_cnt * threshold) * type_size
@@ -262,12 +297,10 @@ gaspi_bcast (segmentBuffer const buffer,
                 );
             }
         } else if ((1 << (i+1)) > iProc) {
+            gaspi_notification_id_t data_available = parent;
   	        wait_or_die( buffer.segment, data_available, parent+1 );  
         }
     }
-
-    // TODO: how to eliminate this?
-    gaspi_barrier(GASPI_GROUP_ALL, timeout_ms);
 
     return GASPI_SUCCESS;
 }
@@ -660,6 +693,7 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
         wait_or_die( buffer_tmp.segment, notif, i + recv_from + 1 );  
 
         // reduce
+        extra_offset = (i%2) * segment_sizes[recv_chunk] * type_size;
         buf_array = (double *)((char*)buf_arr + buffer_tmp.offset + extra_offset);
         segment_start = segment_ends[recv_chunk] - segment_sizes[recv_chunk];
         for (unsigned int j = 0; j < segment_sizes[recv_chunk]; j++) {
@@ -712,6 +746,7 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
         wait_or_die( buffer_tmp.segment, notif, i + recv_from + 1 );  
 
         // copy
+        extra_offset = (i%2) * segment_sizes[recv_chunk] * type_size;
         buf_array = (double *)((char*)buf_arr + buffer_tmp.offset + extra_offset);
         segment_start = segment_ends[recv_chunk] - segment_sizes[recv_chunk];
         for (unsigned int j = 0; j < segment_sizes[recv_chunk]; j++) {

@@ -55,7 +55,7 @@ void check(const int VLEN, const double* res) {
     for (int i = 0; i < VLEN; i++) {
         double resval = (nProc * (nProc + 1)) / 2 + nProc * i;
         if (res[i] != resval) {
-            std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
+            //std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
             correct = false;
         }
     }
@@ -78,13 +78,13 @@ void check_evnt(const int VLEN, const double* res, const double threshold) {
     for (int i = 0; i < ceil(threshold * VLEN); i++) {
         double resval = (nProc * (nProc + 1)) / 2 + nProc * i;
         if (res[i] != resval) {
-            std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
+            //std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
             correct = false;
         }
     }
     for (int i = ceil(threshold * VLEN); i < VLEN; i++) {
         if (res[i] != 0.0) {
-            std::cerr << i << ' ' << res[i] << ' ' << 0.0 << '\n';
+            //std::cerr << i << ' ' << res[i] << ' ' << 0.0 << '\n';
             correct = false;
         }
     }
@@ -153,18 +153,19 @@ void test_reduce(const int VLEN, const int numIters, const bool checkRes){
     gaspi_reduce(buffer_send, buffer_recv, buffer_temp, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, root, queue_id, GASPI_BLOCK);
 
     time += now();
-
     t_median[itime] = time;
+
+    gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
+
+    if (iProc == root && checkRes) {    
+      check(VLEN, rcv_arr);
+    }
   }
   
   sort_median(&t_median[0],&t_median[numIters-1]);
 
   if (iProc == root) {
     printf("%10.6f \n", t_median[numIters/2]);
-  }
-
-  if (iProc == root && checkRes) {    
-    check(VLEN, rcv_arr);
   }
   
   wait_for_flush_queues();
@@ -229,18 +230,19 @@ void test_evnt_consist_reduce(const int VLEN, const int numIters, const bool che
         gaspi_reduce(buffer_send, buffer_recv, buffer_temp, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
   
         time += now();
-
         t_median[itime] = time;
+
+        gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
+
+        if (iProc == root && checkRes) {    
+          check_evnt(VLEN, rcv_arr, threshold);
+        }
       }
       
       sort_median(&t_median[0],&t_median[numIters-1]);
 
       if (iProc == 0) {
         printf("%10.6f \t", t_median[numIters/2]);
-      }
-
-      if (iProc == root && checkRes) {    
-        check_evnt(VLEN, rcv_arr, threshold);
       }
   }
 

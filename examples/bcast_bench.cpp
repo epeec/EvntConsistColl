@@ -60,9 +60,9 @@ template <class T> void check(const int VLEN, const T* res, const int proc) {
 
     if (iProc == proc) {
         if (correct) 
-    	    std::cout << "\n[Std Reduce] Successful run!\n";
+    	    std::cout << "\n[Std Broadcast] Successful run!\n";
         else 
-    	    std::cout << "\n[Std Reduce] Check FAIL!\n";
+    	    std::cout << "\n[Std Broadcast] Check FAIL!\n";
     }
 }
 
@@ -83,9 +83,9 @@ template <class T> void check_evnt(const int VLEN, const T* res, const double th
 
     if (iProc == proc) {
         if (correct) 
-    	    std::cout << "\n[EvntConsist Reduce] Successful run!\n";
+    	    std::cout << "\n[EvntConsist Broadcast] Successful run!\n";
         else 
-    	    std::cout << "\n[EvntConsist Reduce] Check FAIL!\n";
+    	    std::cout << "\n[EvntConsist Broadcast] Check FAIL!\n";
     }
 }
 
@@ -132,20 +132,19 @@ void test_bcast(const int VLEN, const int numIters, const bool checkRes){
     gaspi_bcast(buffer, VLEN, GASPI_TYPE_DOUBLE, root, queue_id, GASPI_BLOCK);
 
     time += now();
+    t_median[itime] = time;
 
     gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
 
-    t_median[itime] = time;
+    if (iProc == (nProc - 1) && checkRes) {    
+      check(VLEN, arr, nProc - 1);
+    }
   }
   
   sort_median(&t_median[0],&t_median[numIters-1]);
 
   if (iProc == root) {
     printf("%10.6f \n", t_median[numIters/2]);
-  }
-
-  if (iProc == (nProc - 1) && checkRes) {    
-    check(VLEN, arr, nProc - 1);
   }
   
   wait_for_flush_queues();
@@ -198,18 +197,19 @@ void test_evnt_consist_bcast(const int VLEN, const int numIters, const bool chec
         gaspi_bcast(buffer, VLEN, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
   
         time += now();
-
         t_median[itime] = time;
+
+        gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
+
+        if (iProc == (nProc - 1) && checkRes) {    
+          check_evnt(VLEN, arr, threshold, nProc - 1);
+        }
       }
       
       sort_median(&t_median[0],&t_median[numIters-1]);
 
       if (iProc == 0) {
         printf("%10.6f \t", t_median[numIters/2]);
-      }
-
-      if (iProc == (nProc - 1) && checkRes) {    
-        check_evnt(VLEN, arr, threshold, nProc - 1);
       }
   }
 
@@ -236,9 +236,9 @@ int main(int argc, char** argv) {
   const int numIters = atoi(argv[2]);
   const bool checkRes = (argc==4)?true:false;
 
-  //test_bcast(VLEN, numIters, checkRes); 
+  test_bcast(VLEN, numIters, checkRes); 
 
-  test_evnt_consist_bcast(VLEN, numIters, checkRes); 
+  //test_evnt_consist_bcast(VLEN, numIters, checkRes); 
  
   SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
 
