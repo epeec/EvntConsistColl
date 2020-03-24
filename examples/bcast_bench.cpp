@@ -43,6 +43,15 @@ template <class T> void fill_array(const int n, T a[]) {
     }
 }
 
+template <class T> void fill_array_zeros(const int n, T a[]) {
+    gaspi_rank_t iProc;
+    SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+
+    for (int i=0; i < n; i++) {
+        a[i] = 0;
+    }
+}
+
 template <class T> void check(const int VLEN, const T* res, const int proc) {
     gaspi_rank_t iProc, nProc;
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -117,8 +126,6 @@ void test_bcast(const int VLEN, const int numIters, const bool checkRes){
   SUCCESS_OR_DIE( gaspi_segment_ptr (segment_id, &array) );
   double *arr = (double *)(array);
 
-  fill_array(VLEN, arr);
-
   if (iProc == root) {
     printf("%d \t", VLEN);
   }
@@ -126,6 +133,10 @@ void test_bcast(const int VLEN, const int numIters, const bool checkRes){
   double *t_median = (double *) calloc(numIters, sizeof(double));
   // measure execution time
   for (int itime = 0; itime < numIters; itime++) { 
+    if (iProc == root) 
+      fill_array(VLEN, arr);
+    else 
+      fill_array_zeros(VLEN, arr);
 
     double time = -now();
 
@@ -179,8 +190,6 @@ void test_evnt_consist_bcast(const int VLEN, const int numIters, const bool chec
  
   double *arr = (double *)(array);
 
-  fill_array(VLEN, arr);
-
   // 25% 50% 75% and 100%
   if (iProc == 0) {
     printf("%d \t", VLEN);
@@ -192,6 +201,11 @@ void test_evnt_consist_bcast(const int VLEN, const int numIters, const bool chec
 
       // measure execution time
       for (int itime = 0; itime < numIters; itime++) { 
+        if (iProc == root) 
+          fill_array(VLEN, arr);
+        else 
+          fill_array_zeros(VLEN, arr);
+
         double time = -now();
 
         gaspi_bcast(buffer, VLEN, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
