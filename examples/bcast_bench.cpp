@@ -134,11 +134,11 @@ void test_bcast(const int VLEN, const int numIters, const bool checkRes){
     time += now();
     t_median[itime] = time;
 
-    gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
-
     if (iProc == (nProc - 1) && checkRes) {    
       check(VLEN, arr, nProc - 1);
     }
+
+    gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
   }
   
   sort_median(&t_median[0],&t_median[numIters-1]);
@@ -199,11 +199,11 @@ void test_evnt_consist_bcast(const int VLEN, const int numIters, const bool chec
         time += now();
         t_median[itime] = time;
 
-        gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
-
         if (iProc == (nProc - 1) && checkRes) {    
           check_evnt(VLEN, arr, threshold, nProc - 1);
         }
+
+        gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
       }
       
       sort_median(&t_median[0],&t_median[numIters-1]);
@@ -236,9 +236,9 @@ int main(int argc, char** argv) {
   const int numIters = atoi(argv[2]);
   const bool checkRes = (argc==4)?true:false;
 
-  test_bcast(VLEN, numIters, checkRes); 
+  //test_bcast(VLEN, numIters, checkRes); 
 
-  //test_evnt_consist_bcast(VLEN, numIters, checkRes); 
+  test_evnt_consist_bcast(VLEN, numIters, checkRes); 
  
   SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
 

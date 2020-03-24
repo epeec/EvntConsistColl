@@ -171,6 +171,7 @@ gaspi_bcast (segmentBuffer buffer,
         j = j * 2;
     int parent = iProc - j / 2;
 
+    // broadcast
     int upper_bound = ceil(log2(nProc));
     for (int i = 0; i < upper_bound; i++) {
         int pow2i = 1 << i;
@@ -190,47 +191,31 @@ gaspi_bcast (segmentBuffer buffer,
         } else if ((1 << (i+1)) > iProc) {
             gaspi_notification_id_t data_available = iProc;
   	        wait_or_die( buffer.segment, data_available, parent+1 );  
-            
-//            // ackowledge parent that the data has arrived
-//            gaspi_notification_id_t id = iProc;
-//            gaspi_notification_t val = iProc;
-//	    	WAIT_IF_QUEUE_FULL( 
-//                gaspi_notify(buffer.segment
-//                    , parent, id, val
-//                    , queue_id, timeout_ms
-//                )
-//                , queue_id
-//            );
+          
+            if (i == (upper_bound - 1)) {
+                // ackowledge parent that the data has arrived
+                gaspi_notification_id_t id = iProc;
+                gaspi_notification_t val = iProc;
+                WAIT_IF_QUEUE_FULL( 
+                    gaspi_notify(buffer.segment
+                        , parent, id, val
+                        , queue_id, timeout_ms
+                    )
+                    , queue_id
+                );
+            }
         }
     }
 
-//    // waiting for notificaitons from children
-//    bst_struct bst;
-//    bst.children = (gaspi_rank_t *) valloc(sizeof(gaspi_rank_t) * (ceil(log2(nProc)) - 1));
-//    int children_count = 0;
-//    for (int i = 0; i < upper_bound; i++) {
-//        if ((iProc == root) || (i > log2(iProc))) {
-//            int k = iProc + (1 << i);
-//            if ( k < nProc ) {
-//                bst.children[children_count] = k;
-//                children_count++;
-//            }
-//        }
-//    }
-//    bst.children_count = children_count;
-//
-//    for (int i = 0; i < upper_bound - 1; i++) {
-//        if (children_count > 0) {
-//            gaspi_notification_id_t id;
-//            gaspi_notification_t val;
-//            waitsome_and_reset(buffer.segment
-//                , bst.children[0], nProc - bst.children[0]
-//                , &id, &val
-//            );
-//            ASSERT(id >= bst.children[0]);
-//            //ASSERT(id <= bst.children[bst.children_count-1]);
-//        }
-//    }
+    // waiting for acknowledgement notificaitons from children (only on the leaves)
+    int pow2i = 1 << (upper_bound - 1);
+    if (iProc < pow2i) {
+        int src = iProc + pow2i;
+        if (src < nProc) {
+            gaspi_notification_id_t id = src;
+  	        wait_or_die( buffer.segment, id, src );  
+        }
+    }
  
     return GASPI_SUCCESS;
 }
@@ -280,6 +265,7 @@ gaspi_bcast (segmentBuffer const buffer,
         j = j * 2;
     int parent = iProc - j / 2;
 
+    // broadcast
     int upper_bound = ceil(log2(nProc));
     for (int i = 0; i < upper_bound; i++) {
         int pow2i = 1 << i;
@@ -299,6 +285,29 @@ gaspi_bcast (segmentBuffer const buffer,
         } else if ((1 << (i+1)) > iProc) {
             gaspi_notification_id_t data_available = parent;
   	        wait_or_die( buffer.segment, data_available, parent+1 );  
+          
+            if (i == (upper_bound - 1)) {
+                // ackowledge parent that the data has arrived
+                gaspi_notification_id_t id = iProc;
+                gaspi_notification_t val = iProc;
+                WAIT_IF_QUEUE_FULL( 
+                    gaspi_notify(buffer.segment
+                        , parent, id, val
+                        , queue_id, timeout_ms
+                    )
+                    , queue_id
+                );
+            }
+        }
+    }
+
+    // waiting for acknowledgement notificaitons from children (only on the leaves)
+    int pow2i = 1 << (upper_bound - 1);
+    if (iProc < pow2i) {
+        int src = iProc + pow2i;
+        if (src < nProc) {
+            gaspi_notification_id_t id = src;
+  	        wait_or_die( buffer.segment, id, src );  
         }
     }
 
