@@ -39,8 +39,6 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
 
-    gaspi_notification_id_t data_available = 0;
-
     // get size of type, see GASPI.h for details
     gaspi_number_t type_size = 0;
     if (type >= 3) 
@@ -54,6 +52,7 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
     		if (k == root) 
 	    		continue;
 
+            gaspi_notification_id_t data_available = k;
 	    	WAIT_IF_QUEUE_FULL( 
                 gaspi_write_notify(buf, doffset, k
 			          , buf, doffset, elem_cnt * type_size
@@ -64,6 +63,7 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
 			);
 	    }
     } else {
+        gaspi_notification_id_t data_available = iProc;
   	    wait_or_die( buf, data_available, iProc+1 );  
     }
 
@@ -98,8 +98,6 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
 
-    gaspi_notification_id_t data_available = 0;
-
     // get size of type, see GASPI.h for details
     gaspi_number_t type_size = 0;
     if (type >= 3) 
@@ -113,6 +111,7 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
 	    	if (k == root) 
 		    	continue;
 
+            gaspi_notification_id_t data_available = k;
 	    	WAIT_IF_QUEUE_FULL( 
 			    gaspi_write_notify(buf, doffset, k
 			        , buf, doffset, ceil(elem_cnt * threshold) * type_size
@@ -123,6 +122,7 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
 			);
 	    }
     } else {
+        gaspi_notification_id_t data_available = iProc;
     	wait_or_die( buf, data_available, root+1 );  
     }
 
