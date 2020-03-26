@@ -45,6 +45,15 @@ template <class T> void fill_array(const int n, T a[]) {
     }
 }
 
+template <class T> void fill_array_zeros(const int n, T a[]) {
+    gaspi_rank_t iProc;
+    SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+
+    for (int i=0; i < n; i++) {
+        a[i] = 0;
+    }
+}
+
 void check(const int VLEN, const double* res) {
     gaspi_rank_t iProc, nProc;
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -147,6 +156,7 @@ void test_reduce(const int VLEN, const int numIters, const bool checkRes){
   double *t_median = (double *) calloc(numIters, sizeof(double));
   // measure execution time
   for (int itime = 0; itime < numIters; itime++) { 
+    fill_array_zeros(VLEN, rcv_arr);
 
     double time = -now();
 
@@ -155,11 +165,11 @@ void test_reduce(const int VLEN, const int numIters, const bool checkRes){
     time += now();
     t_median[itime] = time;
 
-    gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
-
     if (iProc == root && checkRes) {    
       check(VLEN, rcv_arr);
     }
+
+    gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
   }
   
   sort_median(&t_median[0],&t_median[numIters-1]);
@@ -225,6 +235,8 @@ void test_evnt_consist_reduce(const int VLEN, const int numIters, const bool che
 
       // measure execution time
       for (int itime = 0; itime < numIters; itime++) { 
+        fill_array_zeros(VLEN, rcv_arr);
+
         double time = -now();
 
         gaspi_reduce(buffer_send, buffer_recv, buffer_temp, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
@@ -232,11 +244,11 @@ void test_evnt_consist_reduce(const int VLEN, const int numIters, const bool che
         time += now();
         t_median[itime] = time;
 
-        gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
-
         if (iProc == root && checkRes) {    
           check_evnt(VLEN, rcv_arr, threshold);
         }
+
+        gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
       }
       
       sort_median(&t_median[0],&t_median[numIters-1]);
