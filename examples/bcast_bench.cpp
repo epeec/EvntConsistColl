@@ -149,7 +149,7 @@ void test_bcast(const int VLEN, const int numIters, const bool checkRes){
       check(VLEN, arr, nProc - 1);
     }
 
-    gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
+    //gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
   }
   
   sort_median(&t_median[0],&t_median[numIters-1]);
@@ -217,7 +217,7 @@ void test_evnt_consist_bcast(const int VLEN, const int numIters, const bool chec
           check_evnt(VLEN, arr, threshold, nProc - 1);
         }
 
-        gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
+        //gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
       }
       
       sort_median(&t_median[0],&t_median[numIters-1]);

@@ -178,7 +178,12 @@ gaspi_bcast (segmentBuffer buffer,
         if (iProc < pow2i) {
             int dst = iProc + pow2i;
             if (dst < nProc) {
-                gaspi_notification_id_t data_available = dst;
+                // wait for notification that the data can be sent
+                gaspi_notification_id_t id = dst;
+                wait_or_die( buffer.segment, id, dst );  
+
+                // send the data
+                gaspi_notification_id_t data_available = iProc * nProc + dst;
 	    	    WAIT_IF_QUEUE_FULL( 
                     gaspi_write_notify( buffer.segment, doffset, dst
                         , buffer.segment, doffset, elem_cnt * type_size
@@ -189,12 +194,25 @@ gaspi_bcast (segmentBuffer buffer,
                 );
             }
         } else if ((1 << (i+1)) > iProc) {
-            gaspi_notification_id_t data_available = iProc;
+
+            // need to send notification that the child is ready to receive the data
+            gaspi_notification_id_t id = iProc;
+            gaspi_notification_t val = iProc;
+	    	WAIT_IF_QUEUE_FULL( 
+                gaspi_notify(buffer.segment
+                    , parent, id, val
+                    , queue_id, timeout_ms
+                )
+                , queue_id
+            );
+
+            // wait for data to arrive
+            gaspi_notification_id_t data_available = parent * nProc + iProc;
   	        wait_or_die( buffer.segment, data_available, parent+1 );  
           
             if (i == (upper_bound - 1)) {
                 // ackowledge parent that the data has arrived
-                gaspi_notification_id_t id = iProc;
+                gaspi_notification_id_t id = iProc * nProc + parent;
                 gaspi_notification_t val = iProc;
                 WAIT_IF_QUEUE_FULL( 
                     gaspi_notify(buffer.segment
@@ -207,12 +225,12 @@ gaspi_bcast (segmentBuffer buffer,
         }
     }
 
-    // waiting for acknowledgement notificaitons from children (only on the leaves)
+    // waiting for acknowledgement notifications from children (only on the leaves)
     int pow2i = 1 << (upper_bound - 1);
     if (iProc < pow2i) {
         int src = iProc + pow2i;
         if (src < nProc) {
-            gaspi_notification_id_t id = src;
+            gaspi_notification_id_t id = src * nProc + iProc;
   	        wait_or_die( buffer.segment, id, src );  
         }
     }
@@ -272,7 +290,12 @@ gaspi_bcast (segmentBuffer const buffer,
         if (iProc < pow2i) {
             int dst = iProc + pow2i;
             if (dst < nProc) {
-                gaspi_notification_id_t data_available = iProc;
+                // wait for notification that the data can be sent
+                gaspi_notification_id_t id = dst;
+                wait_or_die( buffer.segment, id, dst );  
+
+                // send the data
+                gaspi_notification_id_t data_available = iProc * nProc + dst;
 	    	    WAIT_IF_QUEUE_FULL( 
                     gaspi_write_notify( buffer.segment, doffset, dst
                         , buffer.segment, doffset, ceil(elem_cnt * threshold) * type_size
@@ -283,12 +306,25 @@ gaspi_bcast (segmentBuffer const buffer,
                 );
             }
         } else if ((1 << (i+1)) > iProc) {
-            gaspi_notification_id_t data_available = parent;
+
+            // need to send notification that the child is ready to receive the data
+            gaspi_notification_id_t id = iProc;
+            gaspi_notification_t val = iProc;
+	    	WAIT_IF_QUEUE_FULL( 
+                gaspi_notify(buffer.segment
+                    , parent, id, val
+                    , queue_id, timeout_ms
+                )
+                , queue_id
+            );
+
+            // wait for data to arrive
+            gaspi_notification_id_t data_available = parent * nProc + iProc;
   	        wait_or_die( buffer.segment, data_available, parent+1 );  
           
             if (i == (upper_bound - 1)) {
                 // ackowledge parent that the data has arrived
-                gaspi_notification_id_t id = iProc;
+                gaspi_notification_id_t id = iProc * nProc + parent;
                 gaspi_notification_t val = iProc;
                 WAIT_IF_QUEUE_FULL( 
                     gaspi_notify(buffer.segment
@@ -306,7 +342,7 @@ gaspi_bcast (segmentBuffer const buffer,
     if (iProc < pow2i) {
         int src = iProc + pow2i;
         if (src < nProc) {
-            gaspi_notification_id_t id = src;
+            gaspi_notification_id_t id = src * nProc + iProc;
   	        wait_or_die( buffer.segment, id, src );  
         }
     }
