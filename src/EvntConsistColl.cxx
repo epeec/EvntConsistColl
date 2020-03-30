@@ -730,39 +730,38 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
         int recv_chunk = (iProc - i - 1 + nProc) % nProc;
         int send_chunk = (iProc - i + nProc) % nProc;
         
-        // ready to receive
-        gaspi_notification_id_t id = iProc;
-        gaspi_notification_t val = iProc + 1;
+        // waive that it is ready to receive
+        gaspi_notification_id_t ready = iProc + i;
         WAIT_IF_QUEUE_FULL( 
             gaspi_notify(buffer_send.segment
-                , recv_from, id, val
+                , recv_from, ready, iProc + 1
                 , queue_id, timeout_ms
             )
             , queue_id
         );
 
         // wait for notification that the data can be sent
-        gaspi_notification_id_t data_available = send_to;
-        wait_or_die( buffer_send.segment, data_available, send_to + 1 );  
+        gaspi_notification_id_t ready_arr = send_to + i;
+        wait_or_die( buffer_send.segment, ready_arr, send_to + 1 );  
 
+        // write data
         int segment_start = segment_ends[send_chunk] - segment_sizes[send_chunk];
-    
-        gaspi_notification_id_t notif = i; 
+        gaspi_notification_id_t data = iProc * nProc + send_to + i; 
         int extra_offset = (i%2) * segment_sizes[send_chunk] * type_size;
-
 	    WAIT_IF_QUEUE_FULL( 
             gaspi_write_notify(buffer_receive.segment
                 , buffer_receive.offset + segment_start * type_size // offset
                 , send_to, buffer_tmp.segment, buffer_tmp.offset + extra_offset // offset
-                , segment_sizes[send_chunk] * type_size, notif
+                , segment_sizes[send_chunk] * type_size, data
                 , i + iProc + 1 // notification value: +1 to avoid 0. It equals to recvfrom + 1 on receiver side
                 , queue_id, GASPI_BLOCK
             )
             , queue_id
         );
 
-        // wait for notification that the data arrived
-        wait_or_die( buffer_tmp.segment, notif, i + recv_from + 1 );  
+        // wait for notification that the data has arrived
+        gaspi_notification_id_t data_arr = recv_from * nProc + iProc + i;
+        wait_or_die( buffer_tmp.segment, data_arr, i + recv_from + 1 );  
 
         // reduce
         extra_offset = (i%2) * segment_sizes[recv_chunk] * type_size;
@@ -771,6 +770,20 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
         for (unsigned int j = 0; j < segment_sizes[recv_chunk]; j++) {
             rcv_array[segment_start + j] += buf_array[j];
         }
+
+        // ackowledge that the data has arrived
+        gaspi_notification_id_t ack = i + recv_from + 1;
+        WAIT_IF_QUEUE_FULL( 
+            gaspi_notify(buffer_receive.segment
+                , recv_from, ack, iProc + 1
+                , queue_id, timeout_ms
+            )
+            , queue_id
+        );
+            
+        // wait for acknowledgement notification
+        gaspi_notification_id_t ack_arr = i + iProc + 1;
+        wait_or_die( buffer_receive.segment, ack_arr, send_to + 1 );  
     }
 
     // pipelined ring allgather
@@ -784,38 +797,37 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
         int recv_chunk = (iProc - i + nProc) % nProc;
         
         // ready to receive
-        gaspi_notification_id_t id = iProc;
-        gaspi_notification_t val = iProc + 1;
+        gaspi_notification_id_t ready = iProc + i;
         WAIT_IF_QUEUE_FULL( 
             gaspi_notify(buffer_send.segment
-                , recv_from, id, val
+                , recv_from, ready, iProc + 1
                 , queue_id, timeout_ms
             )
             , queue_id
         );
 
         // wait for notification that the data can be sent
-        gaspi_notification_id_t data_available = send_to;
-        wait_or_die( buffer_send.segment, data_available, send_to + 1 );  
-
+        gaspi_notification_id_t ready_arr = send_to + i;
+        wait_or_die( buffer_send.segment, ready_arr, send_to + 1 );  
+   
+        // write data 
         int segment_start = segment_ends[send_chunk] - segment_sizes[send_chunk];
-    
-        gaspi_notification_id_t notif = i; 
+        gaspi_notification_id_t data = iProc * nProc + send_to + i; 
         int extra_offset = (i%2) * segment_sizes[send_chunk] * type_size;
-
 	    WAIT_IF_QUEUE_FULL( 
             gaspi_write_notify(buffer_receive.segment
                 , buffer_receive.offset + segment_start * type_size // offset
                 , send_to, buffer_tmp.segment, buffer_tmp.offset + extra_offset // offset 
-                , segment_sizes[send_chunk] * type_size, notif
+                , segment_sizes[send_chunk] * type_size, data
                 , i + iProc + 1 // notification value: +1 to avoid 0. It equals to recvfrom + 1 on receiver side
                 , queue_id, GASPI_BLOCK
             )
             , queue_id
         );
 
-        // wait for notification that the data arrived
-        wait_or_die( buffer_tmp.segment, notif, i + recv_from + 1 );  
+        // wait for notification that the data has arrived
+        gaspi_notification_id_t data_arr = recv_from * nProc + iProc + i;
+        wait_or_die( buffer_tmp.segment, data_arr, i + recv_from + 1 );  
 
         // copy
         extra_offset = (i%2) * segment_sizes[recv_chunk] * type_size;
@@ -824,6 +836,20 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
         for (unsigned int j = 0; j < segment_sizes[recv_chunk]; j++) {
             rcv_array[segment_start + j] = buf_array[j];           
         }         
+
+        // ackowledge that the data has arrived
+        gaspi_notification_id_t ack = i + recv_from + 1;
+        WAIT_IF_QUEUE_FULL( 
+            gaspi_notify(buffer_receive.segment
+                , recv_from, ack, iProc + 1
+                , queue_id, timeout_ms
+            )
+            , queue_id
+        );
+            
+        // wait for acknowledgement notification
+        gaspi_notification_id_t ack_arr = i + iProc + 1;
+        wait_or_die( buffer_receive.segment, ack_arr, send_to + 1 );  
     }
 
     return GASPI_SUCCESS;

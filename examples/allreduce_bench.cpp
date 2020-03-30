@@ -46,6 +46,15 @@ template <class T> void fill_array(T a[],
     }
 }
 
+template <class T> void fill_array_zeros(const int n, T a[]) {
+    gaspi_rank_t iProc;
+    SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+
+    for (int i=0; i < n; i++) {
+        a[i] = 0;
+    }
+}
+
 void check(const int VLEN, const double* res) {
     gaspi_rank_t iProc, nProc;
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -56,7 +65,7 @@ void check(const int VLEN, const double* res) {
     for (int i = 0; i < VLEN; i++) {
         double resval = (nProc * (nProc + 1)) / 2 + nProc * i;
         if (res[i] != resval) {
-            std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
+            //std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
             correct = false;
         }
     }
@@ -118,6 +127,8 @@ void test_ring_allreduce(const int VLEN, const int numIters, const bool checkRes
 
     double *t_median = (double *) calloc(numIters, sizeof(double));
     for (int iter=0; iter < numIters; iter++) {
+        fill_array_zeros(VLEN, rcv_arr);
+
         double time = -now();
 
         gaspi_ring_allreduce(buffer_send, buffer_recv, buffer_temp, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, queue_id, GASPI_BLOCK);
@@ -129,7 +140,7 @@ void test_ring_allreduce(const int VLEN, const int numIters, const bool checkRes
             check(VLEN, rcv_arr);
         }
 
-        gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
+        //gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
     }
   
     sort_median(&t_median[0],&t_median[numIters-1]);
