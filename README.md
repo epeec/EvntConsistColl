@@ -11,7 +11,7 @@ The main feature of the eventually consistent collectives is that they operate o
 fraction of data (e.g. 60%) which makes them appealing for machine/ deep learning
 applications. 
 
-Currently, we provide early prototypes of broadcast and reduce.
+We provide implementations of broadcast, reduce, and allreduce.
 
 ## Installation
 
@@ -44,14 +44,16 @@ After building and installing EvntConsistColl,
 - the executable examples are in `<EvntConsistColl_root>/build/examples`
 
 ## Examples
-There are two examples
+There are few examples
 - `bcast` provides two versions of broadcast with plain gaspi_write and binomial tree, while `bcast_bench` is primarily focused on benchmarking the later. Both support regular as well as eventually consistent collectives. To run `bcast` and `bcast_bench` (use binomial tree by default) inside `build`: 
 ```
 gaspi_run -m machine ./examples/bcast
 gaspi_run -m machine ./examples/bcast_bench <number of elements> <iterations> [check, optional]
 ```
-- `reduce` and `reduce_bench` provide implementation based on binomial tree that supports both regular and eventually consistent collectives. To run `reduce` and `reduce_bench` inside `build`:
+- `reduce` and `reduce_bench` provide implementations based on binomial tree that supports both regular and eventually consistent collectives. To run `reduce` and `reduce_bench` inside `build`:
 ```
 gaspi_run -m machine ./examples/reduce <number of elements> <threshold in [0,1]>
 gaspi_run -m machine ./examples/reduce_bench <number of elements> <iterations> [check, optional]
 ```
+- `allreduce_bench` benchmarks the segmented pipelined ring implementation of allreduce. To run `allreduce_bench` inside `build`:
+gaspi_run -m machine ./examples/allreduce_bench <number of elements> <iterations> [check, optional]
