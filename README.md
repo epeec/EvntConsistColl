@@ -45,6 +45,13 @@ After building and installing EvntConsistColl,
 
 ## Examples
 There are two examples
-- `bcast` provides two versions of broadcast with plain gaspi_write and binomial tree. Both support regular
-as well as eventually consistent collectives
-- `reduce` provides implementation based on binomial tree that supports both regular and eventually consistent collectives
+- `bcast` provides two versions of broadcast with plain gaspi_write and binomial tree, while `bcast_bench` is primarily focused on benchmarking the later. Both support regular as well as eventually consistent collectives. To run `bcast` and `bcast_bench` (use binomial tree by default) inside `build`: 
+```
+gaspi_run -m machine ./examples/bcast
+gaspi_run -m machine ./examples/bcast_bench <number of elements> <iterations> [check, optional]
+```
+- `reduce` and `reduce_bench` provide implementation based on binomial tree that supports both regular and eventually consistent collectives. To run `reduce` and `reduce_bench` inside `build`:
+```
+gaspi_run -m machine ./examples/reduce <number of elements> <threshold in [0,1]>
+gaspi_run -m machine ./examples/reduce_bench <number of elements> <iterations> [check, optional]
+```
