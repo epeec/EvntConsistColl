@@ -56,4 +56,6 @@ gaspi_run -m machine ./examples/reduce <number of elements> <threshold in [0,1]>
 gaspi_run -m machine ./examples/reduce_bench <number of elements> <iterations> [check, optional]
 ```
 - `allreduce_bench` benchmarks the segmented pipelined ring implementation of allreduce. To run `allreduce_bench` inside `build`:
+```
 gaspi_run -m machine ./examples/allreduce_bench <number of elements> <iterations> [check, optional]
+```    
