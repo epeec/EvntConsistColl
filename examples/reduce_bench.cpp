@@ -169,7 +169,7 @@ void test_reduce(const int VLEN, const int numIters, const bool checkRes){
       check(VLEN, rcv_arr);
     }
 
-    gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
+    //gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
   }
   
   sort_median(&t_median[0],&t_median[numIters-1]);
