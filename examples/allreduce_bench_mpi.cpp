@@ -5,41 +5,8 @@
 #include <unistd.h>
 #include <sys/time.h>
 
+#include "common.h"
 #include "now.h"
-
-template <class T> static void swap(T *a, T *b) {
-    T tmp = *a;
-    *a = *b;
-    *b = tmp;
-}
-
-template <class T> void sort_median(T *begin, T *end) {
-    T *ptr;
-    T *split;
-    if (end - begin <= 1)
-        return;
-    ptr = begin;
-    split = begin + 1;
-    while (++ptr != end) {
-        if (*ptr < *begin) {
-            swap(ptr, split);
-            ++split;
-        }
-    }
-    swap(begin, split - 1);
-    sort_median(begin, split - 1);
-    sort_median(split, end);
-}
-
-template <class T> void fill_array(T a[],
-         const int n) {
-    int iProc;
-    MPI_Comm_rank(MPI_COMM_WORLD, &iProc);
-
-    for (int i=0; i < n; i++) {
-        a[i] = i + iProc + 1;
-    }
-}
 
 void check(const int VLEN, const double* res) {
     int iProc, nProc;

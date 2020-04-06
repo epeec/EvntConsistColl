@@ -7,52 +7,9 @@
 
 #include "success_or_die.h"
 #include "queue.h"
+#include "common.h"
 
 #include "now.h"
-
-static void swap(double *a, double *b)
-{
-  double tmp = *a;
-  *a = *b;
-  *b = tmp;
-}
-
-void sort_median(double *begin, double *end)
-{
-  double *ptr;
-  double *split;
-  if (end - begin <= 1)
-    return;
-  ptr = begin;
-  split = begin + 1;
-  while (++ptr != end) {
-    if (*ptr < *begin) {
-      swap(ptr, split);
-      ++split;
-    }
-  }
-  swap(begin, split - 1);
-  sort_median(begin, split - 1);
-  sort_median(split, end);
-}
-
-template <class T> void fill_array(const int n, T a[]) {
-    gaspi_rank_t iProc;
-    SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
-
-    for (int i=0; i < n; i++) {
-        a[i] = i + iProc + 1;
-    }
-}
-
-template <class T> void fill_array_zeros(const int n, T a[]) {
-    gaspi_rank_t iProc;
-    SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
-
-    for (int i=0; i < n; i++) {
-        a[i] = 0;
-    }
-}
 
 void check(const int VLEN, const double* res) {
     gaspi_rank_t iProc, nProc;
