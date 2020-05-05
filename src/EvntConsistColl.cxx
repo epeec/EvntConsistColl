@@ -11,7 +11,6 @@
 #include "testsome.h"
 #include "queue.h"
 #include "waitsome.h"
-#include "wait_if_queue_full.h"
 
 /** Broadcast collective operation.
  *
@@ -33,7 +32,7 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
                     const gaspi_datatype_t type,
                     const gaspi_number_t root,
                     const gaspi_queue_id_t queue_id,
-                    const gaspi_timeout_t timeout_ms)
+                    const gaspi_timeout_t timeout)
 {
     gaspi_rank_t iProc, nProc; 
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -53,13 +52,10 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
 	    		continue;
 
             gaspi_notification_id_t data_available = k;
-	    	WAIT_IF_QUEUE_FULL( 
-                gaspi_write_notify(buf, doffset, k
+            write_notify_and_wait(buf, doffset, k
 			          , buf, doffset, elem_cnt * type_size
 			          , data_available, k+1 // +1 so that the value is not zero
-			          , queue_id, timeout_ms
-                )
-                , queue_id
+			          , queue_id, timeout
 			);
 	    }
     } else {
@@ -92,7 +88,7 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
                     const gaspi_double threshold,
                     const gaspi_number_t root,
                     const gaspi_queue_id_t queue_id,
-                    const gaspi_timeout_t timeout_ms)
+                    const gaspi_timeout_t timeout)
 {
     gaspi_rank_t iProc, nProc; 
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -112,13 +108,10 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
 		    	continue;
 
             gaspi_notification_id_t data_available = k;
-	    	WAIT_IF_QUEUE_FULL( 
-			    gaspi_write_notify(buf, doffset, k
+			write_notify_and_wait(buf, doffset, k
 			        , buf, doffset, ceil(elem_cnt * threshold) * type_size
 			        , data_available, root+1 // +1 so that the value is not zero
-			        , queue_id, timeout_ms
-                )
-                , queue_id
+			        , queue_id, timeout
 			);
 	    }
     } else {
@@ -147,7 +140,7 @@ gaspi_bcast (segmentBuffer buffer,
              const gaspi_datatype_t type,
              const gaspi_number_t root,
              const gaspi_queue_id_t queue_id,
-             const gaspi_timeout_t timeout_ms)
+             const gaspi_timeout_t timeout)
 {
     gaspi_rank_t iProc, nProc; 
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -184,13 +177,10 @@ gaspi_bcast (segmentBuffer buffer,
 
                 // send the data
                 gaspi_notification_id_t data_available = iProc * nProc + dst;
-	    	    WAIT_IF_QUEUE_FULL( 
-                    gaspi_write_notify( buffer.segment, doffset, dst
+                write_notify_and_wait( buffer.segment, doffset, dst
                         , buffer.segment, doffset, elem_cnt * type_size
                         , data_available, iProc + 1// +1 so that the value is not zero
-                        , queue_id, timeout_ms 
-                    )
-                    , queue_id
+                        , queue_id, timeout 
                 );
             }
         } else if ((1 << (i+1)) > iProc) {
@@ -198,12 +188,9 @@ gaspi_bcast (segmentBuffer buffer,
             // need to send notification that the child is ready to receive the data
             gaspi_notification_id_t id = iProc;
             gaspi_notification_t val = iProc;
-	    	WAIT_IF_QUEUE_FULL( 
-                gaspi_notify(buffer.segment
+            notify_and_wait(buffer.segment
                     , parent, id, val
-                    , queue_id, timeout_ms
-                )
-                , queue_id
+                    , queue_id, timeout
             );
 
             // wait for data to arrive
@@ -214,12 +201,9 @@ gaspi_bcast (segmentBuffer buffer,
                 // ackowledge parent that the data has arrived
                 gaspi_notification_id_t id = iProc * nProc + parent;
                 gaspi_notification_t val = iProc;
-                WAIT_IF_QUEUE_FULL( 
-                    gaspi_notify(buffer.segment
+                notify_and_wait(buffer.segment
                         , parent, id, val
-                        , queue_id, timeout_ms
-                    )
-                    , queue_id
+                        , queue_id, timeout
                 );
             }
         }
@@ -247,7 +231,7 @@ gaspi_bcast (segmentBuffer buffer,
  * @param threshold The threshol for the amount of data to be broadcasted. The value is in [0, 1]
  * @param root The process id of the root
  * @param queue_id The queue id
- * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
+ * @param timeout Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
  *
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout.
@@ -259,7 +243,7 @@ gaspi_bcast (segmentBuffer const buffer,
              const gaspi_double threshold,
              const gaspi_number_t root,
              const gaspi_queue_id_t queue_id,
-             const gaspi_timeout_t timeout_ms)
+             const gaspi_timeout_t timeout)
 {
     gaspi_rank_t iProc, nProc; 
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -296,13 +280,10 @@ gaspi_bcast (segmentBuffer const buffer,
 
                 // send the data
                 gaspi_notification_id_t data_available = iProc * nProc + dst;
-	    	    WAIT_IF_QUEUE_FULL( 
-                    gaspi_write_notify( buffer.segment, doffset, dst
+                write_notify_and_wait( buffer.segment, doffset, dst
                         , buffer.segment, doffset, ceil(elem_cnt * threshold) * type_size
                         , data_available, iProc+1 // +1 so that the value is not zero
-                        , queue_id, timeout_ms
-                    )
-                    , queue_id
+                        , queue_id, timeout
                 );
             }
         } else if ((1 << (i+1)) > iProc) {
@@ -310,12 +291,9 @@ gaspi_bcast (segmentBuffer const buffer,
             // need to send notification that the child is ready to receive the data
             gaspi_notification_id_t id = iProc;
             gaspi_notification_t val = iProc;
-	    	WAIT_IF_QUEUE_FULL( 
-                gaspi_notify(buffer.segment
+            notify_and_wait(buffer.segment
                     , parent, id, val
-                    , queue_id, timeout_ms
-                )
-                , queue_id
+                    , queue_id, timeout
             );
 
             // wait for data to arrive
@@ -326,12 +304,9 @@ gaspi_bcast (segmentBuffer const buffer,
                 // ackowledge parent that the data has arrived
                 gaspi_notification_id_t id = iProc * nProc + parent;
                 gaspi_notification_t val = iProc;
-                WAIT_IF_QUEUE_FULL( 
-                    gaspi_notify(buffer.segment
+                notify_and_wait(buffer.segment
                         , parent, id, val
-                        , queue_id, timeout_ms
-                    )
-                    , queue_id
+                        , queue_id, timeout
                 );
             }
         }
@@ -360,7 +335,7 @@ gaspi_bcast (segmentBuffer const buffer,
  * @param type Type of data (see gaspi_datatype_t).
  * @param root The process id of the root
  * @param queue_id The queue id
- * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
+ * @param timeout Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
  *
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout.
@@ -375,7 +350,7 @@ gaspi_reduce (const segmentBuffer buffer_send,
 	          const gaspi_datatype_t type,
 	          const gaspi_number_t root,
               const gaspi_queue_id_t queue_id,
-	          const gaspi_timeout_t timeout_ms)
+	          const gaspi_timeout_t timeout)
 {
     gaspi_rank_t iProc, nProc; 
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -439,13 +414,10 @@ gaspi_reduce (const segmentBuffer buffer_send,
 
             // send the data to the parent
             gaspi_notification_id_t data_available = iProc;
-	    	WAIT_IF_QUEUE_FULL( 
-                gaspi_write_notify( buffer_receive.segment, buffer_receive.offset, bst.parent
+            write_notify_and_wait( buffer_receive.segment, buffer_receive.offset, bst.parent
                     , buffer_tmp.segment, buffer_tmp.offset, segment_size
                     , data_available, bst.parent + 1 // +1 so that the value is not zero
-                    , queue_id, timeout_ms
-                )
-                , queue_id
+                    , queue_id, timeout
             );
             
             // wait for acknowledgement notification
@@ -459,12 +431,9 @@ gaspi_reduce (const segmentBuffer buffer_send,
             // need to send notification that the parent is ready to receive the data
             gaspi_rank_t rank = bst.children[children_count-1] * nProc + iProc;        
             gaspi_notification_id_t id = rank;
-	    	WAIT_IF_QUEUE_FULL( 
-                gaspi_notify(buffer_receive.segment
+            notify_and_wait(buffer_receive.segment
                     , bst.children[children_count-1], id, rank
-                    , queue_id, timeout_ms
-                )
-                , queue_id
+                    , queue_id, timeout
             );
         
             // receive data
@@ -483,12 +452,9 @@ gaspi_reduce (const segmentBuffer buffer_send,
 
             // ackowledge child that the data has arrived
             gaspi_notification_id_t ack = iProc + 1;
-            WAIT_IF_QUEUE_FULL( 
-                gaspi_notify(buffer_receive.segment
+            notify_and_wait(buffer_receive.segment
                     , bst.children[children_count - 1], ack, iProc + 1
-                    , queue_id, timeout_ms
-                )
-                , queue_id
+                    , queue_id, timeout
             );
 
             children_count--;
@@ -509,7 +475,7 @@ gaspi_reduce (const segmentBuffer buffer_send,
  * @param threshol The threshol for the amount of data to be reduced. The value is in [0, 1]
  * @param root The process id of the root
  * @param queue_id The queue id
- * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
+ * @param timeout Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
  *
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout.
@@ -525,7 +491,7 @@ gaspi_reduce (const segmentBuffer buffer_send,
               const gaspi_double threshold,
 	          const gaspi_number_t root,
               const gaspi_queue_id_t queue_id,
-	          const gaspi_timeout_t timeout_ms)
+	          const gaspi_timeout_t timeout)
 {
     gaspi_rank_t iProc, nProc; 
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -589,13 +555,10 @@ gaspi_reduce (const segmentBuffer buffer_send,
 
             // send the data to the parent
             gaspi_notification_id_t data_available = iProc;
-	    	WAIT_IF_QUEUE_FULL( 
-                gaspi_write_notify( buffer_receive.segment, buffer_receive.offset, bst.parent
+            write_notify_and_wait( buffer_receive.segment, buffer_receive.offset, bst.parent
                     , buffer_tmp.segment, buffer_tmp.offset, segment_size
                     , data_available, bst.parent + 1 // +1 so that the value is not zero
-                    , queue_id, timeout_ms
-                )
-                , queue_id
+                    , queue_id, timeout
             );
             
             // wait for acknowledgement notification
@@ -609,12 +572,9 @@ gaspi_reduce (const segmentBuffer buffer_send,
             // need to send notification that the parent is ready to receive the data
             gaspi_rank_t rank = bst.children[children_count-1] * nProc + iProc;        
             gaspi_notification_id_t id = rank;
-	    	WAIT_IF_QUEUE_FULL( 
-                gaspi_notify(buffer_receive.segment
+            notify_and_wait(buffer_receive.segment
                     , bst.children[children_count-1], id, rank
-                    , queue_id, timeout_ms
-                )
-                , queue_id
+                    , queue_id, timeout
             );
         
             // receive data
@@ -633,12 +593,9 @@ gaspi_reduce (const segmentBuffer buffer_send,
 
             // ackowledge child that the data has arrived
             gaspi_notification_id_t ack = iProc + 1;
-            WAIT_IF_QUEUE_FULL( 
-                gaspi_notify(buffer_receive.segment
+            notify_and_wait(buffer_receive.segment
                     , bst.children[children_count - 1], ack, iProc + 1
-                    , queue_id, timeout_ms
-                )
-                , queue_id
+                    , queue_id, timeout
             );
                         
             children_count--;
@@ -657,7 +614,7 @@ gaspi_reduce (const segmentBuffer buffer_send,
  * @param operation Type of operations (see gaspi_operation_t)
  * @param datatype Type of data (see gaspi_datatype_t)
  * @param queue_id Queue id
- * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST)
+ * @param timeout Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST)
  *
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout
@@ -670,7 +627,7 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
                       const gaspi_operation_t operation,
                       const gaspi_datatype_t type,
                       const gaspi_queue_id_t queue_id,
-                      const gaspi_timeout_t timeout_ms)
+                      const gaspi_timeout_t timeout)
 {
     gaspi_rank_t iProc, nProc; 
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -732,12 +689,9 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
         
         // waive that it is ready to receive
         gaspi_notification_id_t ready = iProc + i;
-        WAIT_IF_QUEUE_FULL( 
-            gaspi_notify(buffer_send.segment
+        notify_and_wait(buffer_send.segment
                 , recv_from, ready, iProc + 1
-                , queue_id, timeout_ms
-            )
-            , queue_id
+                , queue_id, timeout
         );
 
         // wait for notification that the data can be sent
@@ -748,15 +702,12 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
         int segment_start = segment_ends[send_chunk] - segment_sizes[send_chunk];
         gaspi_notification_id_t data = iProc * nProc + send_to + i; 
         int extra_offset = (i%2) * segment_sizes[send_chunk] * type_size;
-	    WAIT_IF_QUEUE_FULL( 
-            gaspi_write_notify(buffer_receive.segment
+        write_notify_and_wait(buffer_receive.segment
                 , buffer_receive.offset + segment_start * type_size // offset
                 , send_to, buffer_tmp.segment, buffer_tmp.offset + extra_offset // offset
                 , segment_sizes[send_chunk] * type_size, data
                 , i + iProc + 1 // notification value: +1 to avoid 0. It equals to recvfrom + 1 on receiver side
                 , queue_id, GASPI_BLOCK
-            )
-            , queue_id
         );
 
         // wait for notification that the data has arrived
@@ -773,12 +724,9 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
 
         // ackowledge that the data has arrived
         gaspi_notification_id_t ack = i + recv_from + 1;
-        WAIT_IF_QUEUE_FULL( 
-            gaspi_notify(buffer_receive.segment
+        notify_and_wait(buffer_receive.segment
                 , recv_from, ack, iProc + 1
-                , queue_id, timeout_ms
-            )
-            , queue_id
+                , queue_id, timeout
         );
             
         // wait for acknowledgement notification
@@ -798,12 +746,9 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
         
         // ready to receive
         gaspi_notification_id_t ready = iProc + i;
-        WAIT_IF_QUEUE_FULL( 
-            gaspi_notify(buffer_send.segment
+        notify_and_wait(buffer_send.segment
                 , recv_from, ready, iProc + 1
-                , queue_id, timeout_ms
-            )
-            , queue_id
+                , queue_id, timeout
         );
 
         // wait for notification that the data can be sent
@@ -814,15 +759,12 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
         int segment_start = segment_ends[send_chunk] - segment_sizes[send_chunk];
         gaspi_notification_id_t data = iProc * nProc + send_to + i; 
         int extra_offset = (i%2) * segment_sizes[send_chunk] * type_size;
-	    WAIT_IF_QUEUE_FULL( 
-            gaspi_write_notify(buffer_receive.segment
+        write_notify_and_wait(buffer_receive.segment
                 , buffer_receive.offset + segment_start * type_size // offset
                 , send_to, buffer_tmp.segment, buffer_tmp.offset + extra_offset // offset 
                 , segment_sizes[send_chunk] * type_size, data
                 , i + iProc + 1 // notification value: +1 to avoid 0. It equals to recvfrom + 1 on receiver side
                 , queue_id, GASPI_BLOCK
-            )
-            , queue_id
         );
 
         // wait for notification that the data has arrived
@@ -839,12 +781,9 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
 
         // ackowledge that the data has arrived
         gaspi_notification_id_t ack = i + recv_from + 1;
-        WAIT_IF_QUEUE_FULL( 
-            gaspi_notify(buffer_receive.segment
+        notify_and_wait(buffer_receive.segment
                 , recv_from, ack, iProc + 1
-                , queue_id, timeout_ms
-            )
-            , queue_id
+                , queue_id, timeout
         );
             
         // wait for acknowledgement notification

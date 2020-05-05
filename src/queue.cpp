@@ -15,9 +15,9 @@ notify_and_wait ( gaspi_segment_id_t const segment_id_remote
 		, gaspi_notification_id_t const notification_id
 	        , gaspi_notification_t const notification_value
 	        , gaspi_queue_id_t const queue
+            , gaspi_timeout_t const timeout
 	        )
 {
-  gaspi_timeout_t const timeout = GASPI_BLOCK;
   gaspi_return_t ret;
 
   /* notify, wait if required and re-submit */
@@ -94,9 +94,9 @@ write_notify_and_wait ( gaspi_segment_id_t const segment_id_local
 			, gaspi_notification_id_t const notification_id
 			, gaspi_notification_t const notification_value
 			, gaspi_queue_id_t const queue
+            , gaspi_timeout_t const timeout
 			)
 {
-  gaspi_timeout_t const timeout = GASPI_BLOCK;
   gaspi_return_t ret;
 
   //  printf("to: %d size: %d notification_id: %d val: %d\n",rank,size,notification_id,notification_value);

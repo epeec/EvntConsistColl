@@ -9,6 +9,7 @@ notify_and_wait ( gaspi_segment_id_t const segment_id_remote
 		  , gaspi_notification_id_t const notification_id
 		  , gaspi_notification_t const notification_value
 		  , gaspi_queue_id_t const queue
+          , gaspi_timeout_t const timeout
 		  );
 
 void
@@ -39,6 +40,7 @@ write_notify_and_wait ( gaspi_segment_id_t const segment_id_local
 			, gaspi_notification_id_t const notification_id
 			, gaspi_notification_t const notification_value
 			, gaspi_queue_id_t const queue
+            , gaspi_timeout_t const timeout
 			);
 
 
