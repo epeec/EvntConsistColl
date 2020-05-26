@@ -4,11 +4,7 @@
 
 #include <GASPI.h>
 
-// structure for segment and offset
-struct segmentBuffer {
-    gaspi_segment_id_t segment;
-    gaspi_offset_t offset;
-};
+#include "DataStruct.hxx"
 
 
 /** Broadcast collective operation that is based on (n-1) straight gaspi_write

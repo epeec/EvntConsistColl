@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#include "EvntConsistColl.hxx"
+#include "Allreduce.hxx"
 
 #include "success_or_die.h"
 #include "queue.h"
