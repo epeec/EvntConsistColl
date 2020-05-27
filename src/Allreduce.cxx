@@ -12,6 +12,49 @@
 #include "queue.h"
 #include "waitsome.h"
 
+/** 
+ * Get GASPI operation. This is part of GASPI-CXX
+ */
+gaspi_operation_t 
+getGaspiOperationT(Operation const & op)
+{
+    gaspi_operation_t ret;
+
+    switch (op) {
+        case MIN: {
+            ret = GASPI_OP_MIN;
+            break;
+        }
+
+        case MAX: {
+            ret = GASPI_OP_MAX;
+            break;
+        }
+
+        case SUM: {
+            ret = GASPI_OP_SUM;
+            break;
+        }
+
+        default: {
+            throw std::runtime_error ("[Allreduce] Unsupported Type");
+        }
+    }
+
+    return ret;
+}
+
+/** 
+ * Local reduce
+ */
+template <typename T>
+void local_reduce(const unsigned int size, T const *input, T *output)
+{
+    for (unsigned int j = 0; j < size; j++) {
+        output[j] += input[j];
+    }
+}
+
 /** Segmented pipeline ring implementation
  *
  * @param buffer_send Segment with offset of the original data
@@ -26,13 +69,12 @@
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout
  */
-gaspi_return_t 
+template <typename T> gaspi_return_t 
 gaspi_ring_allreduce (const segmentBuffer buffer_send,
                       segmentBuffer buffer_receive,
                       segmentBuffer buffer_tmp,
                       const gaspi_number_t elem_cnt,
-                      const gaspi_operation_t operation,
-                      const gaspi_datatype_t type,
+                      Operation const & op,
                       const gaspi_queue_id_t queue_id,
                       const gaspi_timeout_t timeout)
 {
@@ -41,7 +83,7 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
     SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
 
     // type size
-    int type_size = sizeof(double);
+    int type_size = sizeof(T);
 
     if (nProc <= 1)
         return GASPI_SUCCESS;
@@ -50,8 +92,8 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
     gaspi_pointer_t src_arr, rcv_arr;
     SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_send.segment, &src_arr) );
     SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_receive.segment, &rcv_arr) );
-    double *src_array = (double *)((char*)src_arr + buffer_send.offset);
-    double *rcv_array = (double *)((char*)rcv_arr + buffer_receive.offset);
+    T *src_array = (T *)((char*)src_arr + buffer_send.offset);
+    T *rcv_array = (T *)((char*)rcv_arr + buffer_receive.offset);
 
     // Partition elements of array into nProc chunks
     const unsigned int segment_size = elem_cnt / nProc;
@@ -76,7 +118,7 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
     // Allocate a temporary buffer to store incoming data
     gaspi_pointer_t buf_arr;
     SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_tmp.segment, &buf_arr) );
-    double *buf_array = (double *)((char*)buf_arr + buffer_tmp.offset);
+    T *buf_array = (T *)((char*)buf_arr + buffer_tmp.offset);
 
     // Receive from left neighbor
     const int recv_from = (iProc - 1 + nProc) % nProc;
@@ -121,13 +163,11 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
         gaspi_notification_id_t data_arr = recv_from * nProc + iProc + i;
         wait_or_die( buffer_tmp.segment, data_arr, i + recv_from + 1 );  
 
-        // reduce
+        // local reduce
         extra_offset = (i%2) * segment_sizes[recv_chunk] * type_size;
-        buf_array = (double *)((char*)buf_arr + buffer_tmp.offset + extra_offset);
+        buf_array = (T *)((char*)buf_arr + buffer_tmp.offset + extra_offset);
         segment_start = segment_ends[recv_chunk] - segment_sizes[recv_chunk];
-        for (unsigned int j = 0; j < segment_sizes[recv_chunk]; j++) {
-            rcv_array[segment_start + j] += buf_array[j];
-        }
+        local_reduce<T>(segment_sizes[recv_chunk], &buf_array[0], &rcv_array[segment_start]);
 
         // ackowledge that the data has arrived
         gaspi_notification_id_t ack = i + recv_from + 1;
@@ -180,7 +220,7 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
 
         // copy
         extra_offset = (i%2) * segment_sizes[recv_chunk] * type_size;
-        buf_array = (double *)((char*)buf_arr + buffer_tmp.offset + extra_offset);
+        buf_array = (T *)((char*)buf_arr + buffer_tmp.offset + extra_offset);
         segment_start = segment_ends[recv_chunk] - segment_sizes[recv_chunk];
         for (unsigned int j = 0; j < segment_sizes[recv_chunk]; j++) {
             rcv_array[segment_start + j] = buf_array[j];           
@@ -201,3 +241,39 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
     return GASPI_SUCCESS;
 }
 
+// explicit template instantiation
+template gaspi_return_t 
+gaspi_ring_allreduce<double> (const segmentBuffer buffer_send,
+                              segmentBuffer buffer_receive,
+                              segmentBuffer buffer_tmp,
+                              const gaspi_number_t elem_cnt,
+                              Operation const & op,
+                              const gaspi_queue_id_t queue_id,
+                              const gaspi_timeout_t timeout);
+
+template gaspi_return_t 
+gaspi_ring_allreduce<float> (const segmentBuffer buffer_send,
+                              segmentBuffer buffer_receive,
+                              segmentBuffer buffer_tmp,
+                              const gaspi_number_t elem_cnt,
+                              Operation const & op,
+                              const gaspi_queue_id_t queue_id,
+                              const gaspi_timeout_t timeout);
+
+template gaspi_return_t 
+gaspi_ring_allreduce<int> (const segmentBuffer buffer_send,
+                              segmentBuffer buffer_receive,
+                              segmentBuffer buffer_tmp,
+                              const gaspi_number_t elem_cnt,
+                              Operation const & op,
+                              const gaspi_queue_id_t queue_id,
+                              const gaspi_timeout_t timeout);
+
+template gaspi_return_t 
+gaspi_ring_allreduce<unsigned int> (const segmentBuffer buffer_send,
+                              segmentBuffer buffer_receive,
+                              segmentBuffer buffer_tmp,
+                              const gaspi_number_t elem_cnt,
+                              Operation const & op,
+                              const gaspi_queue_id_t queue_id,
+                              const gaspi_timeout_t timeout);

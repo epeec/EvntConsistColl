@@ -13,7 +13,8 @@
 
 #include "now.h"
 
-void check(const int VLEN, const double* res) {
+template <typename T>
+void check(const int VLEN, const T* res) {
     gaspi_rank_t iProc, nProc;
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
@@ -21,7 +22,7 @@ void check(const int VLEN, const double* res) {
     bool correct = true;
 
     for (int i = 0; i < VLEN; i++) {
-        double resval = (nProc * (nProc + 1)) / 2 + nProc * i;
+        T resval = (nProc * (nProc + 1)) / 2 + nProc * i;
         if (res[i] != resval) {
             //std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
             correct = false;
@@ -38,6 +39,7 @@ void check(const int VLEN, const double* res) {
 }
 
 // testing the gaspi pipelined ring allreduce
+template <typename T>
 void test_ring_allreduce(const int VLEN, const int numIters, const bool checkRes){
   
     gaspi_rank_t iProc, nProc; 
@@ -45,7 +47,7 @@ void test_ring_allreduce(const int VLEN, const int numIters, const bool checkRes
     SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
     int root = 0;
 
-    const int type_size = sizeof (double);
+    const int type_size = sizeof(T);
     gaspi_segment_id_t const segment_send = 0;
     gaspi_segment_id_t const segment_recv = 1;
     gaspi_size_t       const segment_size = VLEN * type_size;
@@ -72,8 +74,8 @@ void test_ring_allreduce(const int VLEN, const int numIters, const bool checkRes
     SUCCESS_OR_DIE( gaspi_segment_ptr (segment_send, &send_array) );
     SUCCESS_OR_DIE( gaspi_segment_ptr (segment_recv, &recv_array) );
 
-    double * src_arr = (double *)(send_array);
-    double * rcv_arr = (double *)(recv_array);
+    T * src_arr = (T *)(send_array);
+    T * rcv_arr = (T *)(recv_array);
 
     fill_array(VLEN, src_arr);
 
@@ -89,13 +91,13 @@ void test_ring_allreduce(const int VLEN, const int numIters, const bool checkRes
 
         double time = -now();
 
-        gaspi_ring_allreduce(buffer_send, buffer_recv, buffer_temp, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, queue_id, GASPI_BLOCK);
+        gaspi_ring_allreduce<T>(buffer_send, buffer_recv, buffer_temp, VLEN, Operation::SUM, queue_id, GASPI_BLOCK);
 
         time += now();
         t_median[iter] = time;
 
         if (checkRes) {    
-            check(VLEN, rcv_arr);
+            check<T>(VLEN, rcv_arr);
         }
 
         //gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
@@ -126,7 +128,7 @@ int main(int argc, char** argv) {
 
     SUCCESS_OR_DIE( gaspi_proc_init(GASPI_BLOCK) );
 
-    test_ring_allreduce(VLEN, numIters, checkRes); 
+    test_ring_allreduce<unsigned int>(VLEN, numIters, checkRes); 
 
     SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
 

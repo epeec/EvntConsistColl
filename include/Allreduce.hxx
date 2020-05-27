@@ -6,6 +6,13 @@
 
 #include "DataStruct.hxx"
 
+/**
+ * Easy to read operations. This is part of GASPI-CXX
+ */
+enum Operation { SUM
+                , MAX
+                , MIN };
+
 /** Segmented pipeline ring implementation
  *
  * @param buffer_send Segment with offset of the original data
@@ -20,14 +27,13 @@
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout
  */
-gaspi_return_t 
+template <typename T> gaspi_return_t 
 gaspi_ring_allreduce (const segmentBuffer buffer_send,
-   	                  segmentBuffer buffer_receive,
-   	                  segmentBuffer buffer_tmp,
+                      segmentBuffer buffer_receive,
+                      segmentBuffer buffer_tmp,
                       const gaspi_number_t elem_cnt,
-                      const gaspi_operation_t operation,
-                      const gaspi_datatype_t type,
+                      Operation const & op,
                       const gaspi_queue_id_t queue_id,
-                      const gaspi_timeout_t timeout_ms);
+                      const gaspi_timeout_t timeout);
 
 #endif // #define ALLREDUCE_H
