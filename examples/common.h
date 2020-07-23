@@ -35,9 +35,6 @@ template <class T> void fill_array(const int n, T a[]) {
 }
 
 template <class T> void fill_array_zeros(const int n, T a[]) {
-    gaspi_rank_t iProc;
-    SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
-
     for (int i=0; i < n; i++) {
         a[i] = 0;
     }

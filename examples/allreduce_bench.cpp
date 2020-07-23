@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
 
     SUCCESS_OR_DIE( gaspi_proc_init(GASPI_BLOCK) );
 
-    test_ring_allreduce<unsigned int>(VLEN, numIters, checkRes); 
+    test_ring_allreduce<double>(VLEN, numIters, checkRes); 
 
     SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
 
