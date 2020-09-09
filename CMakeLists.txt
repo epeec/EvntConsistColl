@@ -9,7 +9,7 @@ include(GNUInstallDirs)
 
 set (CMAKE_CXX_STANDARD 14)
 set (CMAKE_BUILD_TYPE Release)
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Wextra -pedantic")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Wextra -pedantic -fpermissive")
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse")
 
 set (CMAKE_SHARED_LINKER_FLAGS "-Wl")

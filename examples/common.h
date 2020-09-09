@@ -39,4 +39,32 @@ template <class T> void fill_array_zeros(const int n, T a[]) {
         a[i] = 0;
     }
 }
+
+template <class T> double calculateMean(const int n, const T* a) {
+    double sum = 0.0, mean;
+
+    // compute mean
+    int i;
+    for(i = 0; i < n; ++i) {
+        sum += a[i];
+    }
+    mean = sum / n;
+
+    return mean;
+}
+
+template <class T> double calculateConfidenceLevel(const int n, const T* a, const double mean) {
+    double standardDeviation = 0.0, confidenceLevel;
+
+    int i;
+    // compute standard deviation
+    for(i = 0; i < n; ++i)
+        standardDeviation += pow(a[i] - mean, 2);
+    standardDeviation = sqrt(standardDeviation / n);
+
+    // compute confidence level of 95%
+    confidenceLevel = 1.96 * (standardDeviation / sqrt((double) n));
+    
+    return confidenceLevel;
+}
 #endif

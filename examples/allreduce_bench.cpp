@@ -3,6 +3,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <unistd.h>
+#include <math.h>
 #include <sys/time.h>
 
 #include "Allreduce.hxx"
@@ -104,9 +105,13 @@ void test_ring_allreduce(const int VLEN, const int numIters, const bool checkRes
     }
   
     sort_median(&t_median[0],&t_median[numIters-1]);
+    double mean = calculateMean(numIters, &t_median[0]);
+    double confidenceLevel = calculateConfidenceLevel(numIters, &t_median[0], mean);
 
     if (iProc == root) {
-        printf("%10.6f \n", t_median[numIters/2]);
+        printf("%10.6f \t", t_median[numIters/2]);
+        printf("%10.6f \t", mean);
+        printf("%10.6f \n", confidenceLevel);
     }
 
     wait_for_flush_queues();

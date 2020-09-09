@@ -205,13 +205,17 @@ void test_evnt_consist_reduce(const int VLEN, const int numIters, const bool che
           check_evnt(VLEN, rcv_arr, threshold);
         }
 
-        gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
+        //gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
       }
       
       sort_median(&t_median[0],&t_median[numIters-1]);
+      double mean = calculateMean(numIters, &t_median[0]);
+      double confidenceLevel = calculateConfidenceLevel(numIters, &t_median[0], mean);
 
       if (iProc == 0) {
         printf("%10.6f \t", t_median[numIters/2]);
+        printf("%10.6f \t", mean);
+        printf("%10.6f \t", confidenceLevel);
       }
   }
 

@@ -180,9 +180,13 @@ void test_evnt_consist_bcast(const int VLEN, const int numIters, const bool chec
       }
       
       sort_median(&t_median[0],&t_median[numIters-1]);
+      double mean = calculateMean(numIters, &t_median[0]);
+      double confidenceLevel = calculateConfidenceLevel(numIters, &t_median[0], mean);
 
       if (iProc == 0) {
         printf("%10.6f \t", t_median[numIters/2]);
+        printf("%10.6f \t", mean);
+        printf("%10.6f \t", confidenceLevel);
       }
   }
 
