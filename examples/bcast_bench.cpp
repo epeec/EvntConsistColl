@@ -167,6 +167,7 @@ void test_evnt_consist_bcast(const int VLEN, const int numIters, const bool chec
 
         double time = -now();
 
+        //gaspi_bcast_simple(buffer, VLEN, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
         gaspi_bcast(buffer, VLEN, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
   
         time += now();

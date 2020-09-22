@@ -9,9 +9,8 @@
 
 /** Broadcast collective operation that is based on (n-1) straight gaspi_write
  *
- * @param buf The segment with data for the operation
- * @param offset The offset within the segment
- * @param elem_cnt The number of data elements
+ * @param buffer Segment with offset of the original data
+ * @param elem_cnt The number of data elements in the buffer
  * @param type Type of data (see gaspi_datatype_t)
  * @param root The process id of the root
  * @param queue_id The queue id
@@ -21,8 +20,7 @@
  * error, GASPI_TIMEOUT in case of timeout.
  */
 gaspi_return_t
-gaspi_bcast_simple (gaspi_segment_id_t const buf,
-                    const gaspi_number_t offset,
+gaspi_bcast_simple (segmentBuffer const buffer,
                     const gaspi_number_t elem_cnt,
                     const gaspi_datatype_t type,
                     const gaspi_number_t root,
@@ -31,9 +29,8 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
 
 /** Eventually consistent broadcast collective operation that is based on (n-1) straight gaspi_write
  *
- * @param buf The segment with data for the operation
- * @param offset The offset within the segment
- * @param elem_cnt The number of data elements
+ * @param buffer Segment with offset of the original data
+ * @param elem_cnt The number of data elements in the buffer
  * @param type Type of data (see gaspi_datatype_t)
  * @param threshold The threshol for the amount of data to be broadcasted. The value is in [0, 1]
  * @param root The process id of the root
@@ -44,8 +41,7 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
  * error, GASPI_TIMEOUT in case of timeout.
  */
 gaspi_return_t
-gaspi_bcast_simple (gaspi_segment_id_t const buf,
-                    const gaspi_number_t offset,
+gaspi_bcast_simple (segmentBuffer const buffer,
                     const gaspi_number_t elem_cnt,
                     const gaspi_datatype_t type,
                     const gaspi_double threshold,

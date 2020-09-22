@@ -12,11 +12,10 @@
 #include "queue.h"
 #include "waitsome.h"
 
-/** Broadcast collective operation.
+/** Broadcast collective operation that is based on (n-1) writes.
  *
- * @param buf The segment with data for the operation
- * @param offset The offset within the segment
- * @param elem_cnt The number of data elements
+ * @param buffer Segment with offset of the original data
+ * @param elem_cnt The number of data elements in the buffer
  * @param type Type of data (see gaspi_datatype_t)
  * @param root The process id of the root
  * @param queue_id The queue id
@@ -26,9 +25,8 @@
  * error, GASPI_TIMEOUT in case of timeout.
  */
 gaspi_return_t
-gaspi_bcast_simple (gaspi_segment_id_t const buf,
-                    gaspi_number_t const offset,
-                    gaspi_number_t const elem_cnt,
+gaspi_bcast_simple (segmentBuffer const buffer,
+                    const gaspi_number_t elem_cnt,
                     const gaspi_datatype_t type,
                     const gaspi_number_t root,
                     const gaspi_queue_id_t queue_id,
@@ -38,13 +36,16 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
 
+    if (nProc <= 1)
+        return GASPI_SUCCESS;
+
     // get size of type, see GASPI.h for details
     gaspi_number_t type_size = 0;
     if (type >= 3) 
     	type_size = 8;
     else
 	    type_size = 4;
-    gaspi_number_t doffset = offset * type_size;
+    gaspi_number_t doffset = buffer.offset * type_size;
   
     if (iProc == root) {	
 	    for(uint k = 0; k < nProc; k++) {
@@ -52,15 +53,15 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
 	    		continue;
 
             gaspi_notification_id_t data_available = k;
-            write_notify_and_wait(buf, doffset, k
-			          , buf, doffset, elem_cnt * type_size
+            write_notify_and_wait( buffer.segment, doffset, k
+			          , buffer.segment, doffset, elem_cnt * type_size
 			          , data_available, k+1 // +1 so that the value is not zero
 			          , queue_id, timeout
 			);
 	    }
     } else {
         gaspi_notification_id_t data_available = iProc;
-  	    wait_or_die( buf, data_available, iProc+1 );  
+  	    wait_or_die( buffer.segment, data_available, iProc+1 );  
     }
 
     return GASPI_SUCCESS;
@@ -68,9 +69,8 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
 
 /** Eventually consistent broadcast collective operation that is based on (n-1) straight gaspi_write
  *
- * @param buf The segment with data for the operation
- * @param offset The offset within the segment
- * @param elem_cnt The number of data elements
+ * @param buffer Segment with offset of the original data
+ * @param elem_cnt The number of data elements in the buffer
  * @param type Type of data (see gaspi_datatype_t)
  * @param threshold The threshol for the amount of data to be broadcasted. The value is in [0, 1]
  * @param root The process id of the root
@@ -81,9 +81,8 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
  * error, GASPI_TIMEOUT in case of timeout.
  */
 gaspi_return_t
-gaspi_bcast_simple (gaspi_segment_id_t const buf,
-                    gaspi_number_t const offset,
-                    gaspi_number_t const elem_cnt,
+gaspi_bcast_simple (segmentBuffer const buffer,
+                    const gaspi_number_t elem_cnt,
                     const gaspi_datatype_t type,
                     const gaspi_double threshold,
                     const gaspi_number_t root,
@@ -94,13 +93,16 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
 
+    if (nProc <= 1)
+        return GASPI_SUCCESS;
+
     // get size of type, see GASPI.h for details
     gaspi_number_t type_size = 0;
     if (type >= 3) 
     	type_size = 8;
     else
 	    type_size = 4;
-    gaspi_number_t doffset = offset * type_size;
+    gaspi_number_t doffset = buffer.offset * type_size;
  
     if (iProc == root) {	
 	    for(uint k = 0; k < nProc; k++) {
@@ -108,15 +110,32 @@ gaspi_bcast_simple (gaspi_segment_id_t const buf,
 		    	continue;
 
             gaspi_notification_id_t data_available = k;
-			write_notify_and_wait(buf, doffset, k
-			        , buf, doffset, ceil(elem_cnt * threshold) * type_size
+			write_notify_and_wait( buffer.segment, doffset, k
+			        , buffer.segment, doffset, ceil(elem_cnt * threshold) * type_size
 			        , data_available, root+1 // +1 so that the value is not zero
 			        , queue_id, timeout
 			);
 	    }
     } else {
         gaspi_notification_id_t data_available = iProc;
-    	wait_or_die( buf, data_available, root+1 );  
+    	wait_or_die( buffer.segment, data_available, root+1 );  
+
+        // ackowledge parent that the data has arrived
+        gaspi_notification_id_t id = nProc + iProc + 1;
+        notify_and_wait( buffer.segment
+                , root, id, iProc+1
+                , queue_id, timeout
+        );
+    }
+
+    // wait for acknowledgement notifications 
+    if (iProc == root) {	
+	    for(uint k = 0; k < nProc; k++) {
+	    	if (k == root) 
+		    	continue;
+            gaspi_notification_id_t id = nProc + k + 1;
+  	        wait_or_die( buffer.segment, id, k+1 );
+        } 
     }
 
     return GASPI_SUCCESS;
@@ -225,8 +244,7 @@ gaspi_bcast (segmentBuffer buffer,
 /** Eventually consistent broadcast collective operation that uses binomial tree.
  *
  * @param buffer Segment with offset of the original data
- * @param elem_cnt The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
- * @param operation The type of operations (see gaspi_operation_t).
+ * @param elem_cnt The number of data elements in the buffer
  * @param type Type of data (see gaspi_datatype_t).
  * @param threshold The threshol for the amount of data to be broadcasted. The value is in [0, 1]
  * @param root The process id of the root
