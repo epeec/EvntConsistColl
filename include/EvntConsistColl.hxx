@@ -11,7 +11,6 @@
  *
  * @param buffer Segment with offset of the original data
  * @param elem_cnt The number of data elements in the buffer
- * @param type Type of data (see gaspi_datatype_t)
  * @param root The process id of the root
  * @param queue_id The queue id
  * @param timeout_ws Time out: ms, GASPI_BLOCK or GASPI_TEST
@@ -19,10 +18,9 @@
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout.
  */
-gaspi_return_t
+template <typename T> gaspi_return_t 
 gaspi_bcast_simple (segmentBuffer const buffer,
                     const gaspi_number_t elem_cnt,
-                    const gaspi_datatype_t type,
                     const gaspi_number_t root,
                     const gaspi_queue_id_t queue_id,
                     const gaspi_timeout_t timeout_ms);
@@ -31,7 +29,6 @@ gaspi_bcast_simple (segmentBuffer const buffer,
  *
  * @param buffer Segment with offset of the original data
  * @param elem_cnt The number of data elements in the buffer
- * @param type Type of data (see gaspi_datatype_t)
  * @param threshold The threshol for the amount of data to be broadcasted. The value is in [0, 1]
  * @param root The process id of the root
  * @param queue_id The queue id
@@ -40,10 +37,9 @@ gaspi_bcast_simple (segmentBuffer const buffer,
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout.
  */
-gaspi_return_t
+template <typename T> gaspi_return_t 
 gaspi_bcast_simple (segmentBuffer const buffer,
                     const gaspi_number_t elem_cnt,
-                    const gaspi_datatype_t type,
                     const gaspi_double threshold,
                     const gaspi_number_t root,
                     const gaspi_queue_id_t queue_id,

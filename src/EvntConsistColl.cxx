@@ -16,7 +16,6 @@
  *
  * @param buffer Segment with offset of the original data
  * @param elem_cnt The number of data elements in the buffer
- * @param type Type of data (see gaspi_datatype_t)
  * @param root The process id of the root
  * @param queue_id The queue id
  * @param timeout_ws Time out: ms, GASPI_BLOCK or GASPI_TEST
@@ -24,10 +23,9 @@
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout.
  */
-gaspi_return_t
+template <typename T> gaspi_return_t 
 gaspi_bcast_simple (segmentBuffer const buffer,
                     const gaspi_number_t elem_cnt,
-                    const gaspi_datatype_t type,
                     const gaspi_number_t root,
                     const gaspi_queue_id_t queue_id,
                     const gaspi_timeout_t timeout)
@@ -39,12 +37,9 @@ gaspi_bcast_simple (segmentBuffer const buffer,
     if (nProc <= 1)
         return GASPI_SUCCESS;
 
-    // get size of type, see GASPI.h for details
-    gaspi_number_t type_size = 0;
-    if (type >= 3) 
-    	type_size = 8;
-    else
-	    type_size = 4;
+    // type size
+    int type_size = sizeof(T);
+
     gaspi_number_t doffset = buffer.offset * type_size;
   
     if (iProc == root) {	
@@ -62,6 +57,22 @@ gaspi_bcast_simple (segmentBuffer const buffer,
     } else {
         gaspi_notification_id_t data_available = iProc;
   	    wait_or_die( buffer.segment, data_available, iProc+1 );  
+        // ackowledge parent that the data has arrived
+        gaspi_notification_id_t id = nProc + iProc + 1;
+        notify_and_wait( buffer.segment
+                , root, id, iProc+1
+                , queue_id, timeout
+        );
+    }
+
+    // wait for acknowledgement notifications 
+    if (iProc == root) {	
+	    for(uint k = 0; k < nProc; k++) {
+	    	if (k == root) 
+		    	continue;
+            gaspi_notification_id_t id = nProc + k + 1;
+  	        wait_or_die( buffer.segment, id, k+1 );
+        } 
     }
 
     return GASPI_SUCCESS;
@@ -71,7 +82,6 @@ gaspi_bcast_simple (segmentBuffer const buffer,
  *
  * @param buffer Segment with offset of the original data
  * @param elem_cnt The number of data elements in the buffer
- * @param type Type of data (see gaspi_datatype_t)
  * @param threshold The threshol for the amount of data to be broadcasted. The value is in [0, 1]
  * @param root The process id of the root
  * @param queue_id The queue id
@@ -80,10 +90,9 @@ gaspi_bcast_simple (segmentBuffer const buffer,
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout.
  */
-gaspi_return_t
+template <typename T> gaspi_return_t 
 gaspi_bcast_simple (segmentBuffer const buffer,
                     const gaspi_number_t elem_cnt,
-                    const gaspi_datatype_t type,
                     const gaspi_double threshold,
                     const gaspi_number_t root,
                     const gaspi_queue_id_t queue_id,
@@ -96,12 +105,9 @@ gaspi_bcast_simple (segmentBuffer const buffer,
     if (nProc <= 1)
         return GASPI_SUCCESS;
 
-    // get size of type, see GASPI.h for details
-    gaspi_number_t type_size = 0;
-    if (type >= 3) 
-    	type_size = 8;
-    else
-	    type_size = 4;
+    // type size
+    int type_size = sizeof(T);
+
     gaspi_number_t doffset = buffer.offset * type_size;
  
     if (iProc == root) {	
@@ -672,6 +678,68 @@ template gaspi_return_t
 gaspi_bcast<unsigned int> (segmentBuffer buffer,
              const gaspi_number_t elem_cnt,
              const gaspi_double threshold,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);
+
+// weakly consistent bcast -- simple version
+template gaspi_return_t 
+gaspi_bcast_simple<double> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
+             const gaspi_double threshold,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);
+
+template gaspi_return_t 
+gaspi_bcast_simple<float> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
+             const gaspi_double threshold,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);
+
+template gaspi_return_t 
+gaspi_bcast_simple<int> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
+             const gaspi_double threshold,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);
+
+template gaspi_return_t 
+gaspi_bcast_simple<unsigned int> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
+             const gaspi_double threshold,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);
+
+// consistent bcast -- simple version
+template gaspi_return_t 
+gaspi_bcast_simple<double> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);
+
+template gaspi_return_t 
+gaspi_bcast_simple<float> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);
+
+template gaspi_return_t 
+gaspi_bcast_simple<int> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);
+
+template gaspi_return_t 
+gaspi_bcast_simple<unsigned int> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
              const gaspi_number_t root,
              const gaspi_queue_id_t queue_id,
              const gaspi_timeout_t timeout);

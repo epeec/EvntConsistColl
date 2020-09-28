@@ -103,12 +103,13 @@ void test_bcast(const int VLEN, const int numIters, const bool checkRes){
     double time = -now();
 
     gaspi_bcast<T>(buffer, VLEN, root, queue_id, GASPI_BLOCK);
+    //gaspi_bcast_simple<T>(buffer, VLEN, root, queue_id, GASPI_BLOCK);
 
     time += now();
     t_median[itime] = time;
 
     if (iProc == (nProc - 1) && checkRes) {    
-      check(VLEN, arr, nProc - 1);
+      check<T>(VLEN, arr, nProc - 1);
     }
 
     //gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
@@ -171,8 +172,8 @@ void test_evnt_consist_bcast(const int VLEN, const int numIters, const bool chec
 
         double time = -now();
 
-        //gaspi_bcast_simple(buffer, VLEN, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
         gaspi_bcast<T>(buffer, VLEN, threshold, root, queue_id, GASPI_BLOCK);
+        //gaspi_bcast_simple<T>(buffer, VLEN, threshold, root, queue_id, GASPI_BLOCK);
   
         time += now();
         t_median[itime] = time;
@@ -218,7 +219,7 @@ int main(int argc, char** argv) {
   const int numIters = atoi(argv[2]);
   const bool checkRes = (argc==4)?true:false;
 
-  //test_bcast<unsigned int>(VLEN, numIters, checkRes); 
+  //test_bcast<double>(VLEN, numIters, checkRes); 
 
   test_evnt_consist_bcast<double>(VLEN, numIters, checkRes); 
  
