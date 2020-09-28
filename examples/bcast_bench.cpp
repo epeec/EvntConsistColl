@@ -11,7 +11,8 @@
 
 #include "now.h"
 
-template <class T> void check(const int VLEN, const T* res, const int proc) {
+template <typename T>
+void check(const int VLEN, const T* res, const int proc) {
     gaspi_rank_t iProc, nProc;
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
@@ -34,7 +35,8 @@ template <class T> void check(const int VLEN, const T* res, const int proc) {
     }
 }
 
-template <class T> void check_evnt(const int VLEN, const T* res, const double threshold, const int proc) {
+template <typename T> 
+void check_evnt(const int VLEN, const T* res, const double threshold, const int proc) {
     gaspi_rank_t iProc, nProc;
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
@@ -58,13 +60,14 @@ template <class T> void check_evnt(const int VLEN, const T* res, const double th
 }
 
 // testing regular gaspi bcast that is based on binomial tree
+template <typename T>
 void test_bcast(const int VLEN, const int numIters, const bool checkRes){
 
   gaspi_rank_t iProc, nProc;
   SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
   SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
 
-  const int type_size = sizeof(double);
+  const int type_size = sizeof(T);
   
   gaspi_rank_t root = 0;
   gaspi_queue_id_t queue_id = 0;
@@ -83,7 +86,7 @@ void test_bcast(const int VLEN, const int numIters, const bool checkRes){
   
   gaspi_pointer_t array;
   SUCCESS_OR_DIE( gaspi_segment_ptr (segment_id, &array) );
-  double *arr = (double *)(array);
+  T *arr = (T *)(array);
 
   if (iProc == root) {
     printf("%d \t", VLEN);
@@ -99,7 +102,7 @@ void test_bcast(const int VLEN, const int numIters, const bool checkRes){
 
     double time = -now();
 
-    gaspi_bcast(buffer, VLEN, GASPI_TYPE_DOUBLE, root, queue_id, GASPI_BLOCK);
+    gaspi_bcast<T>(buffer, VLEN, root, queue_id, GASPI_BLOCK);
 
     time += now();
     t_median[itime] = time;
@@ -121,13 +124,14 @@ void test_bcast(const int VLEN, const int numIters, const bool checkRes){
 }
 
 // testing eventually consistent gaspi bcast that is based on binomial tree
+template <typename T>
 void test_evnt_consist_bcast(const int VLEN, const int numIters, const bool checkRes){
 
   gaspi_rank_t iProc, nProc;
   SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
   SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
 
-  const int type_size = sizeof(double);
+  const int type_size = sizeof(T);
   
   gaspi_rank_t root = 0;
   gaspi_queue_id_t queue_id = 0;
@@ -147,7 +151,7 @@ void test_evnt_consist_bcast(const int VLEN, const int numIters, const bool chec
   gaspi_pointer_t array;
   SUCCESS_OR_DIE( gaspi_segment_ptr (buffer.segment, &array) );
  
-  double *arr = (double *)(array);
+  T *arr = (T *)(array);
 
   // 25% 50% 75% and 100%
   if (iProc == 0) {
@@ -168,13 +172,13 @@ void test_evnt_consist_bcast(const int VLEN, const int numIters, const bool chec
         double time = -now();
 
         //gaspi_bcast_simple(buffer, VLEN, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
-        gaspi_bcast(buffer, VLEN, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
+        gaspi_bcast<T>(buffer, VLEN, threshold, root, queue_id, GASPI_BLOCK);
   
         time += now();
         t_median[itime] = time;
 
         if (iProc == (nProc - 1) && checkRes) {    
-          check_evnt(VLEN, arr, threshold, nProc - 1);
+          check_evnt<T>(VLEN, arr, threshold, nProc - 1);
         }
 
         //gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
@@ -214,9 +218,9 @@ int main(int argc, char** argv) {
   const int numIters = atoi(argv[2]);
   const bool checkRes = (argc==4)?true:false;
 
-  //test_bcast(VLEN, numIters, checkRes); 
+  //test_bcast<unsigned int>(VLEN, numIters, checkRes); 
 
-  test_evnt_consist_bcast(VLEN, numIters, checkRes); 
+  test_evnt_consist_bcast<double>(VLEN, numIters, checkRes); 
  
   SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
 

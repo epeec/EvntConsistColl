@@ -67,7 +67,7 @@ gaspi_bcast_simple (segmentBuffer const buffer,
     return GASPI_SUCCESS;
 }
 
-/** Eventually consistent broadcast collective operation that is based on (n-1) straight gaspi_write
+/** Weakly consistent broadcast collective operation that is based on (n-1) straight gaspi_write
  *
  * @param buffer Segment with offset of the original data
  * @param elem_cnt The number of data elements in the buffer
@@ -145,7 +145,6 @@ gaspi_bcast_simple (segmentBuffer const buffer,
  *
  * @param buffer Segment with offset of the original data
  * @param elem_cnt The number of data elements
- * @param type Type of data (see gaspi_datatype_t)
  * @param root The process id of the root
  * @param queue_id The queue id
  * @param timeout_ws Time out: ms, GASPI_BLOCK or GASPI_TEST
@@ -153,10 +152,9 @@ gaspi_bcast_simple (segmentBuffer const buffer,
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout.
  */
-gaspi_return_t
+template <typename T> gaspi_return_t 
 gaspi_bcast (segmentBuffer buffer,
              const gaspi_number_t elem_cnt,
-             const gaspi_datatype_t type,
              const gaspi_number_t root,
              const gaspi_queue_id_t queue_id,
              const gaspi_timeout_t timeout)
@@ -168,12 +166,9 @@ gaspi_bcast (segmentBuffer buffer,
     if (nProc <= 1)
         return GASPI_SUCCESS;
 
-    // get size of type, see GASPI.h for details
-    gaspi_number_t type_size = 0;
-    if (type >= 3) 
-    	type_size = 8;
-    else
-	    type_size = 4;
+    // type size
+    int type_size = sizeof(T);
+
     gaspi_number_t doffset = buffer.offset * type_size;
 
     // compute parent
@@ -241,11 +236,10 @@ gaspi_bcast (segmentBuffer buffer,
     return GASPI_SUCCESS;
 }
 
-/** Eventually consistent broadcast collective operation that uses binomial tree.
+/** Weakly consistent broadcast collective operation that uses binomial tree.
  *
  * @param buffer Segment with offset of the original data
  * @param elem_cnt The number of data elements in the buffer
- * @param type Type of data (see gaspi_datatype_t).
  * @param threshold The threshol for the amount of data to be broadcasted. The value is in [0, 1]
  * @param root The process id of the root
  * @param queue_id The queue id
@@ -254,10 +248,9 @@ gaspi_bcast (segmentBuffer buffer,
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout.
  */
-gaspi_return_t
+template <typename T> gaspi_return_t 
 gaspi_bcast (segmentBuffer const buffer,
              const gaspi_number_t elem_cnt,
-             const gaspi_datatype_t type,
              const gaspi_double threshold,
              const gaspi_number_t root,
              const gaspi_queue_id_t queue_id,
@@ -270,12 +263,9 @@ gaspi_bcast (segmentBuffer const buffer,
     if (nProc <= 1)
         return GASPI_SUCCESS;
 
-    // get size of type, see GASPI.h for details
-    gaspi_number_t type_size = 0;
-    if (type >= 3) 
-    	type_size = 8;
-    else
-	    type_size = 4;
+    // type size
+    int type_size = sizeof(T);
+
     gaspi_number_t doffset = buffer.offset * type_size;
 
     // compute parent
@@ -482,7 +472,7 @@ gaspi_reduce (const segmentBuffer buffer_send,
     return GASPI_SUCCESS;
 }
 
-/** Eventually consistent reduce collective operation that implements binomial tree
+/** Weakly consistent reduce collective operation that implements binomial tree
  *
  * @param buffer_send Segment with offset of the original data
  * @param buffer_receive Segment with offset of the reduced data
@@ -622,3 +612,66 @@ gaspi_reduce (const segmentBuffer buffer_send,
 
     return GASPI_SUCCESS;
 }
+
+// explicit template instantiation
+// consistent bcast
+template gaspi_return_t 
+gaspi_bcast<double> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);
+
+template gaspi_return_t 
+gaspi_bcast<float> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);
+
+template gaspi_return_t 
+gaspi_bcast<int> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);
+
+template gaspi_return_t 
+gaspi_bcast<unsigned int> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);
+
+// weakly consistent bcast
+template gaspi_return_t 
+gaspi_bcast<double> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
+             const gaspi_double threshold,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);
+
+template gaspi_return_t 
+gaspi_bcast<float> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
+             const gaspi_double threshold,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);
+
+template gaspi_return_t 
+gaspi_bcast<int> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
+             const gaspi_double threshold,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);
+
+template gaspi_return_t 
+gaspi_bcast<unsigned int> (segmentBuffer buffer,
+             const gaspi_number_t elem_cnt,
+             const gaspi_double threshold,
+             const gaspi_number_t root,
+             const gaspi_queue_id_t queue_id,
+             const gaspi_timeout_t timeout);

@@ -27,7 +27,7 @@ gaspi_bcast_simple (segmentBuffer const buffer,
                     const gaspi_queue_id_t queue_id,
                     const gaspi_timeout_t timeout_ms);
 
-/** Eventually consistent broadcast collective operation that is based on (n-1) straight gaspi_write
+/** Weakly consistent broadcast collective operation that is based on (n-1) straight gaspi_write
  *
  * @param buffer Segment with offset of the original data
  * @param elem_cnt The number of data elements in the buffer
@@ -61,7 +61,6 @@ typedef struct{
  *
  * @param buffer Segment with offset of the original data
  * @param elem_cnt The number of data elements
- * @param type Type of data (see gaspi_datatype_t)
  * @param root The process id of the root
  * @param queue_id The queue id
  * @param timeout_ws Time out: ms, GASPI_BLOCK or GASPI_TEST
@@ -69,19 +68,17 @@ typedef struct{
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout.
  */
-gaspi_return_t
+template <typename T> gaspi_return_t 
 gaspi_bcast (segmentBuffer const buffer,
 	         const gaspi_number_t elem_cnt,
-             const gaspi_datatype_t type,
              const gaspi_number_t root,
              const gaspi_queue_id_t queue_id,
              const gaspi_timeout_t timeout_ms);
 
-/** Eventually consistent broadcast collective operation that uses binomial tree.
+/** Weakly consistent broadcast collective operation that uses binomial tree.
  *
  * @param buffer Segment with offset of the original data
  * @param elem_cnt The number of data elements
- * @param type Type of data (see gaspi_datatype_t)
  * @param threshold The threshol for the amount of data to be broadcasted. The value is in [0, 1]
  * @param root The process id of the root
  * @param queue_id The queue id
@@ -90,10 +87,9 @@ gaspi_bcast (segmentBuffer const buffer,
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout.
  */
-gaspi_return_t
+template <typename T> gaspi_return_t 
 gaspi_bcast (segmentBuffer const buffer,
              const gaspi_number_t elem_cnt,
-             const gaspi_datatype_t type,
              const gaspi_double threshold,
              const gaspi_number_t root,
              const gaspi_queue_id_t queue_id,
@@ -124,7 +120,7 @@ gaspi_reduce (const segmentBuffer buffer_send,
               const gaspi_queue_id_t queue_id,
               const gaspi_timeout_t timeout_ms);
 
-/** Eventually consistent reduce collective operation that implements binomial tree
+/** Weakly consistent reduce collective operation that implements binomial tree
  *
  * @param buffer_send Segment with offset of the original data
  * @param buffer_receive Segment with offset of the reduced data
@@ -151,29 +147,5 @@ gaspi_reduce (const segmentBuffer buffer_send,
               const gaspi_number_t root,
               const gaspi_queue_id_t queue_id,
               const gaspi_timeout_t timeout_ms);
-
-/** Segmented pipeline ring implementation
- *
- * @param buffer_send Segment with offset of the original data
- * @param buffer_receive Segment with offset of the reduced data
- * @param buffer_tmp Segment with offset of the temprorary part of data (~elem_cnt/nProc)
- * @param elem_cnt Number of data elements in the buffer
- * @param operation Type of operations (see gaspi_operation_t)
- * @param datatype Type of data (see gaspi_datatype_t)
- * @param queue_id Queue id
- * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST)
- *
- * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
- * error, GASPI_TIMEOUT in case of timeout
- */
-gaspi_return_t 
-gaspi_ring_allreduce (const segmentBuffer buffer_send,
-   	                  segmentBuffer buffer_receive,
-   	                  segmentBuffer buffer_tmp,
-                      const gaspi_number_t elem_cnt,
-                      const gaspi_operation_t operation,
-                      const gaspi_datatype_t type,
-                      const gaspi_queue_id_t queue_id,
-                      const gaspi_timeout_t timeout_ms);
 
 #endif //#define EVNT_CONSIST_COLL_H

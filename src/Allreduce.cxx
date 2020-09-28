@@ -37,7 +37,7 @@ getGaspiOperationT(Operation const & op)
         }
 
         default: {
-            throw std::runtime_error ("[Allreduce] Unsupported Type");
+            throw std::runtime_error ("[Allreduce] Unsupported Operation");
         }
     }
 
