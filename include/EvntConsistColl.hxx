@@ -45,14 +45,6 @@ gaspi_bcast_simple (segmentBuffer const buffer,
                     const gaspi_queue_id_t queue_id,
                     const gaspi_timeout_t timeout_ms);
 
-// structure for binomial tree-based algorithms
-typedef struct{
-    gaspi_rank_t parent;
-    gaspi_rank_t *children;
-    gaspi_rank_t children_count = 0;
-    bool isactive;
-} bst_struct;
-
 /** Broadcast collective operation that uses binomial tree
  *
  * @param buffer Segment with offset of the original data
@@ -97,7 +89,6 @@ gaspi_bcast (segmentBuffer const buffer,
  * @param buffer_receive Segment with offset of the reduced data
  * @param buffer_tmp Segment with offset of the temprorary part of data (~elem_cnt/nProc)
  * @param operation The type of operations (see gaspi_operation_t).
- * @param type Type of data (see gaspi_datatype_t).
  * @param root The process id of the root
  * @param queue_id The queue id
  * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
@@ -105,13 +96,12 @@ gaspi_bcast (segmentBuffer const buffer,
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout.
  */
-gaspi_return_t 
+template <typename T> gaspi_return_t 
 gaspi_reduce (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
    	          segmentBuffer buffer_tmp,
               const gaspi_number_t elem_cnt,
               const gaspi_operation_t operation,
-              const gaspi_datatype_t type,
               const gaspi_number_t root,
               const gaspi_queue_id_t queue_id,
               const gaspi_timeout_t timeout_ms);
@@ -123,7 +113,6 @@ gaspi_reduce (const segmentBuffer buffer_send,
  * @param buffer_tmp Segment with offset of the temprorary part of data (~elem_cnt/nProc)
  * @param elem_cnt The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
  * @param operation The type of operations (see gaspi_operation_t).
- * @param type Type of data (see gaspi_datatype_t).
  * @param threshold The threshol for the amount of data to be reduced. The value is in [0, 1]
  * @param root The process id of the root
  * @param queue_id The queue id
@@ -132,13 +121,12 @@ gaspi_reduce (const segmentBuffer buffer_send,
  * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
  * error, GASPI_TIMEOUT in case of timeout.
  */
-gaspi_return_t 
+template <typename T> gaspi_return_t 
 gaspi_reduce (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
    	          segmentBuffer buffer_tmp,
               const gaspi_number_t elem_cnt,
               const gaspi_operation_t operation,
-              const gaspi_datatype_t type,
               const gaspi_double threshold,
               const gaspi_number_t root,
               const gaspi_queue_id_t queue_id,

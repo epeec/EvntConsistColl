@@ -82,11 +82,11 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num(&nProc) );
 
-    // type size
-    int type_size = sizeof(T);
-
     if (nProc <= 1)
         return GASPI_SUCCESS;
+
+    // type size
+    int type_size = sizeof(T);
 
     // auxiliary pointers
     gaspi_pointer_t src_arr, rcv_arr;

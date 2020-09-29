@@ -1,13 +1,13 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-template <class T> static void swap(T *a, T *b) {
+template <typename T> static void swap(T *a, T *b) {
   T tmp = *a;
   *a = *b;
   *b = tmp;
 }
 
-template <class T> void sort_median(T *begin, T *end) {
+template <typename T> void sort_median(T *begin, T *end) {
   T *ptr;
   T *split;
   if (end - begin <= 1)
@@ -25,7 +25,7 @@ template <class T> void sort_median(T *begin, T *end) {
   sort_median(split, end);
 }
 
-template <class T> void fill_array(const int n, T a[]) {
+template <typename T> void fill_array(const int n, T a[]) {
     gaspi_rank_t iProc;
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
 
@@ -34,13 +34,13 @@ template <class T> void fill_array(const int n, T a[]) {
     }
 }
 
-template <class T> void fill_array_zeros(const int n, T a[]) {
+template <typename T> void fill_array_zeros(const int n, T a[]) {
     for (int i=0; i < n; i++) {
         a[i] = 0;
     }
 }
 
-template <class T> double calculateMean(const int n, const T* a) {
+template <typename T> double calculateMean(const int n, const T* a) {
     double sum = 0.0, mean;
 
     // compute mean
@@ -53,7 +53,7 @@ template <class T> double calculateMean(const int n, const T* a) {
     return mean;
 }
 
-template <class T> double calculateConfidenceLevel(const int n, const T* a, const double mean) {
+template <typename T> double calculateConfidenceLevel(const int n, const T* a, const double mean) {
     double standardDeviation = 0.0, confidenceLevel;
 
     int i;

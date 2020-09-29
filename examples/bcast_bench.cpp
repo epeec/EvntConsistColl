@@ -154,13 +154,13 @@ void test_evnt_consist_bcast(const int VLEN, const int numIters, const bool chec
  
   T *arr = (T *)(array);
 
-  // 25% 50% 75% and 100%
   if (iProc == 0) {
     printf("%d \t", VLEN);
   }
 
   double *t_median = (double *) calloc(numIters, sizeof(double));
   for (int index = 1; index < 5; index++) { 
+      // 25% 50% 75% and 100%
       gaspi_double threshold = index * 0.25;
 
       // measure execution time

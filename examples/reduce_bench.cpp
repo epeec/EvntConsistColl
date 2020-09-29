@@ -11,7 +11,8 @@
 
 #include "now.h"
 
-void check(const int VLEN, const double* res) {
+template <typename T>
+void check(const int VLEN, const T* res) {
     gaspi_rank_t iProc, nProc;
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
@@ -19,7 +20,7 @@ void check(const int VLEN, const double* res) {
     bool correct = true;
 
     for (int i = 0; i < VLEN; i++) {
-        double resval = (nProc * (nProc + 1)) / 2 + nProc * i;
+        T resval = (nProc * (nProc + 1)) / 2 + nProc * i;
         if (res[i] != resval) {
             //std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
             correct = false;
@@ -34,7 +35,8 @@ void check(const int VLEN, const double* res) {
     }
 }
 
-void check_evnt(const int VLEN, const double* res, const double threshold) {
+template <typename T>
+void check_evnt(const int VLEN, const T* res, const double threshold) {
     gaspi_rank_t iProc, nProc;
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
@@ -42,7 +44,7 @@ void check_evnt(const int VLEN, const double* res, const double threshold) {
     bool correct = true;
 
     for (int i = 0; i < ceil(threshold * VLEN); i++) {
-        double resval = (nProc * (nProc + 1)) / 2 + nProc * i;
+        T resval = (nProc * (nProc + 1)) / 2 + nProc * i;
         if (res[i] != resval) {
             //std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
             correct = false;
@@ -64,13 +66,14 @@ void check_evnt(const int VLEN, const double* res, const double threshold) {
 }
 
 // testing regular gaspi reduce that is based on binomial tree
+template <typename T>
 void test_reduce(const int VLEN, const int numIters, const bool checkRes){
 
   gaspi_rank_t iProc, nProc;
   SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
   SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
 
-  const int type_size = sizeof(double);
+  const int type_size = sizeof(T);
   
   gaspi_rank_t root = 0;
   gaspi_queue_id_t queue_id = 0;
@@ -101,8 +104,8 @@ void test_reduce(const int VLEN, const int numIters, const bool checkRes){
   SUCCESS_OR_DIE( gaspi_segment_ptr (segment_send_id, &send_array) );
   SUCCESS_OR_DIE( gaspi_segment_ptr (segment_recv_id, &recv_array) );
  
-  double * src_arr = (double *)(send_array);
-  double * rcv_arr = (double *)(recv_array);
+  T * src_arr = (T *)(send_array);
+  T * rcv_arr = (T *)(recv_array);
 
   fill_array(VLEN, src_arr);
 
@@ -117,7 +120,7 @@ void test_reduce(const int VLEN, const int numIters, const bool checkRes){
 
     double time = -now();
 
-    gaspi_reduce(buffer_send, buffer_recv, buffer_temp, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, root, queue_id, GASPI_BLOCK);
+    gaspi_reduce<T>(buffer_send, buffer_recv, buffer_temp, VLEN, GASPI_OP_SUM, root, queue_id, GASPI_BLOCK);
 
     time += now();
     t_median[itime] = time;
@@ -139,13 +142,14 @@ void test_reduce(const int VLEN, const int numIters, const bool checkRes){
 }
 
 // testing eventually consistent gaspi reduce that is based on binomial tree
+template <typename T>
 void test_evnt_consist_reduce(const int VLEN, const int numIters, const bool checkRes){
 
   gaspi_rank_t iProc, nProc;
   SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
   SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
 
-  const int type_size = sizeof(double);
+  const int type_size = sizeof(T);
   
   gaspi_rank_t root = 0;
   gaspi_queue_id_t queue_id = 0;
@@ -176,18 +180,18 @@ void test_evnt_consist_reduce(const int VLEN, const int numIters, const bool che
   SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_send.segment, &send_array) );
   SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_recv.segment, &recv_array) );
  
-  double *src_arr = (double *)(send_array);
-  double *rcv_arr = (double *)(recv_array);
+  T *src_arr = (T *)(send_array);
+  T *rcv_arr = (T *)(recv_array);
 
   fill_array(VLEN, src_arr);
 
-  // 25% 50% 75% and 100%
   if (iProc == 0) {
     printf("%d \t", VLEN);
   }
 
   double *t_median = (double *) calloc(numIters, sizeof(double));
   for (int index = 1; index < 5; index++) { 
+      // 25% 50% 75% and 100%
       gaspi_double threshold = index * 0.25;
 
       // measure execution time
@@ -196,7 +200,7 @@ void test_evnt_consist_reduce(const int VLEN, const int numIters, const bool che
 
         double time = -now();
 
-        gaspi_reduce(buffer_send, buffer_recv, buffer_temp, VLEN, GASPI_OP_SUM, GASPI_TYPE_DOUBLE, threshold, root, queue_id, GASPI_BLOCK);
+        gaspi_reduce<T>(buffer_send, buffer_recv, buffer_temp, VLEN, GASPI_OP_SUM, threshold, root, queue_id, GASPI_BLOCK);
   
         time += now();
         t_median[itime] = time;
@@ -242,9 +246,9 @@ int main(int argc, char** argv) {
   const int numIters = atoi(argv[2]);
   const bool checkRes = (argc==4)?true:false;
 
-  //test_reduce(VLEN, numIters, checkRes); 
+  //test_reduce<double>(VLEN, numIters, checkRes); 
 
-  test_evnt_consist_reduce(VLEN, numIters, checkRes); 
+  test_evnt_consist_reduce<double>(VLEN, numIters, checkRes); 
  
   SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
 
