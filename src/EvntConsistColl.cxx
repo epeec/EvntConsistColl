@@ -353,7 +353,7 @@ gaspi_bcast (segmentBuffer const buffer,
  * @param buffer_receive Segment with offset of the reduced data
  * @param buffer_tmp Segment with offset of the temprorary part of data (~elem_cnt/nProc)
  * @param elem_cnt The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
- * @param operation The type of operations (see gaspi_operation_t).
+ * @param operation The type of operations (MIN, MAX, SUM)
  * @param root The process id of the root
  * @param queue_id The queue id
  * @param timeout Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
@@ -367,7 +367,7 @@ gaspi_reduce (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
    	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
-	          const gaspi_operation_t operation,
+              const Operation & op,
 	          const gaspi_number_t root,
               const gaspi_queue_id_t queue_id,
 	          const gaspi_timeout_t timeout)
@@ -461,10 +461,8 @@ gaspi_reduce (const segmentBuffer buffer_send,
             ASSERT(id >= bst.children[0]);
             ASSERT(id <= bst.children[bst.children_count-1]);
 
-            // reduce
-            for (j = 0; j < (int) elem_cnt; j++) {
-                rcv_arr[j] += buf_arr[j];
-            }
+            // local reduce
+            local_reduce<T>(op, elem_cnt, &buf_arr[0], &rcv_arr[0]);
 
             // ackowledge child that the data has arrived
             gaspi_notification_id_t ack = iProc + 1;
@@ -486,7 +484,7 @@ gaspi_reduce (const segmentBuffer buffer_send,
  * @param buffer_receive Segment with offset of the reduced data
  * @param buffer_tmp Segment with offset of the temprorary part of data (~elem_cnt/nProc)
  * @param elem_cnt The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
- * @param operation The type of operations (see gaspi_operation_t).
+ * @param operation The type of operations (MIN, MAX, SUM)
  * @param threshold The threshold for the amount of data to be reduced. The value is in [0, 1]
  * @param root The process id of the root
  * @param queue_id The queue id
@@ -501,7 +499,7 @@ gaspi_reduce (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
    	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
-	          const gaspi_operation_t operation,
+              const Operation & op,
               const gaspi_double threshold,
 	          const gaspi_number_t root,
               const gaspi_queue_id_t queue_id,
@@ -597,10 +595,8 @@ gaspi_reduce (const segmentBuffer buffer_send,
             ASSERT(id >= bst.children[0]);
             ASSERT(id <= bst.children[bst.children_count-1]);
 
-            // reduce
-            for (j = 0; j < num_elem; j++) {
-                rcv_arr[j] += buf_arr[j];
-            }
+            // local reduce
+            local_reduce<T>(op, elem_cnt, &buf_arr[0], &rcv_arr[0]);
 
             // ackowledge child that the data has arrived
             gaspi_notification_id_t ack = iProc + 1;
@@ -747,7 +743,7 @@ gaspi_reduce<double> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
    	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
-	          const gaspi_operation_t operation,
+              const Operation & op,
               const gaspi_double threshold,
 	          const gaspi_number_t root,
               const gaspi_queue_id_t queue_id,
@@ -758,7 +754,7 @@ gaspi_reduce<float> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
    	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
-	          const gaspi_operation_t operation,
+              const Operation & op,
               const gaspi_double threshold,
 	          const gaspi_number_t root,
               const gaspi_queue_id_t queue_id,
@@ -769,7 +765,7 @@ gaspi_reduce<int> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
    	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
-	          const gaspi_operation_t operation,
+              const Operation & op,
               const gaspi_double threshold,
 	          const gaspi_number_t root,
               const gaspi_queue_id_t queue_id,
@@ -780,7 +776,7 @@ gaspi_reduce<unsigned int> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
    	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
-	          const gaspi_operation_t operation,
+              const Operation & op,
               const gaspi_double threshold,
 	          const gaspi_number_t root,
               const gaspi_queue_id_t queue_id,
@@ -792,7 +788,7 @@ gaspi_reduce<double> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
    	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
-	          const gaspi_operation_t operation,
+              const Operation & op,
 	          const gaspi_number_t root,
               const gaspi_queue_id_t queue_id,
 	          const gaspi_timeout_t timeout);
@@ -802,7 +798,7 @@ gaspi_reduce<float> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
    	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
-	          const gaspi_operation_t operation,
+              const Operation & op,
 	          const gaspi_number_t root,
               const gaspi_queue_id_t queue_id,
 	          const gaspi_timeout_t timeout);
@@ -812,7 +808,7 @@ gaspi_reduce<int> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
    	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
-	          const gaspi_operation_t operation,
+              const Operation & op,
 	          const gaspi_number_t root,
               const gaspi_queue_id_t queue_id,
 	          const gaspi_timeout_t timeout);
@@ -822,7 +818,7 @@ gaspi_reduce<unsigned int> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
    	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
-	          const gaspi_operation_t operation,
+              const Operation & op,
 	          const gaspi_number_t root,
               const gaspi_queue_id_t queue_id,
 	          const gaspi_timeout_t timeout);

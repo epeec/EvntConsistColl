@@ -12,31 +12,69 @@
 #include "now.h"
 
 template <typename T>
-void check(const int VLEN, const T* res) {
+void check_min(const int VLEN, const T* res, const double threshold) {
     gaspi_rank_t iProc, nProc;
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
     
     bool correct = true;
 
-    for (int i = 0; i < VLEN; i++) {
-        T resval = (nProc * (nProc + 1)) / 2 + nProc * i;
+    for (int i = 0; i < ceil(threshold * VLEN); i++) {
+        T resval = i + 1;
         if (res[i] != resval) {
             //std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
             correct = false;
         }
     }
+    for (int i = ceil(threshold * VLEN); i < VLEN; i++) {
+        if (res[i] != 0.0) {
+            //std::cerr << i << ' ' << res[i] << ' ' << 0.0 << '\n';
+            correct = false;
+        }
+    }
 
     if (iProc == 0) {
-        if (correct) 
-    	    std::cout << "\n[Std Reduce] Successful run!\n";
-        else 
-    	    std::cout << "\n[Std Reduce] Check FAIL!\n";
+        if (correct) {
+    	    std::cout << "Successful run!\n";
+        } else { 
+    	    std::cout << "Check FAIL!\n";
+        }
     }
 }
 
 template <typename T>
-void check_evnt(const int VLEN, const T* res, const double threshold) {
+void check_max(const int VLEN, const T* res, const double threshold) {
+    gaspi_rank_t iProc, nProc;
+    SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+    SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
+    
+    bool correct = true;
+
+    for (int i = 0; i < ceil(threshold * VLEN); i++) {
+        T resval = i + nProc;
+        if (res[i] != resval) {
+            //std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
+            correct = false;
+        }
+    }
+    for (int i = ceil(threshold * VLEN); i < VLEN; i++) {
+        if (res[i] != 0.0) {
+            //std::cerr << i << ' ' << res[i] << ' ' << 0.0 << '\n';
+            correct = false;
+        }
+    }
+
+    if (iProc == 0) {
+        if (correct) {
+    	    std::cout << "Successful run!\n";
+        } else { 
+    	    std::cout << "Check FAIL!\n";
+        }
+    }
+}
+
+template <typename T>
+void check_sum(const int VLEN, const T* res, const double threshold) {
     gaspi_rank_t iProc, nProc;
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
@@ -58,16 +96,41 @@ void check_evnt(const int VLEN, const T* res, const double threshold) {
     }
 
     if (iProc == 0) {
-        if (correct) 
-    	    std::cout << "\n[EvntConsist Reduce] Successful run!\n";
-        else 
-    	    std::cout << "\n[EvntConsist Reduce] Check FAIL!\n";
+        if (correct) {
+    	    std::cout << "Successful run!\n";
+        } else { 
+    	    std::cout << "Check FAIL!\n";
+        }
+    }
+}
+
+template <typename T>
+void check(const Operation &op, const int VLEN, const T* res, const double threshold) {
+    switch (op) {
+        case MIN: {
+            check_min<T>(VLEN, res, threshold);
+            break;
+        }
+
+        case MAX: {
+            check_max<T>(VLEN, res, threshold);
+            break;
+        }
+
+        case SUM: {
+            check_sum<T>(VLEN, res, threshold);
+            break;
+        }
+
+        default: {
+            throw std::runtime_error ("[Reduce] Unsupported Operation");
+        }
     }
 }
 
 // testing regular gaspi reduce that is based on binomial tree
 template <typename T>
-void test_reduce(const int VLEN, const int numIters, const bool checkRes){
+void test_reduce(const Operation &op, const int VLEN, const int numIters, const bool checkRes){
 
   gaspi_rank_t iProc, nProc;
   SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -120,13 +183,13 @@ void test_reduce(const int VLEN, const int numIters, const bool checkRes){
 
     double time = -now();
 
-    gaspi_reduce<T>(buffer_send, buffer_recv, buffer_temp, VLEN, GASPI_OP_SUM, root, queue_id, GASPI_BLOCK);
+    gaspi_reduce<T>(buffer_send, buffer_recv, buffer_temp, VLEN, op, root, queue_id, GASPI_BLOCK);
 
     time += now();
     t_median[itime] = time;
 
     if (iProc == root && checkRes) {    
-      check(VLEN, rcv_arr);
+      check(op, VLEN, rcv_arr, 1.0);
     }
 
     //gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
@@ -143,7 +206,7 @@ void test_reduce(const int VLEN, const int numIters, const bool checkRes){
 
 // testing eventually consistent gaspi reduce that is based on binomial tree
 template <typename T>
-void test_evnt_consist_reduce(const int VLEN, const int numIters, const bool checkRes){
+void test_evnt_consist_reduce(const Operation &op, const int VLEN, const int numIters, const bool checkRes){
 
   gaspi_rank_t iProc, nProc;
   SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -200,13 +263,13 @@ void test_evnt_consist_reduce(const int VLEN, const int numIters, const bool che
 
         double time = -now();
 
-        gaspi_reduce<T>(buffer_send, buffer_recv, buffer_temp, VLEN, GASPI_OP_SUM, threshold, root, queue_id, GASPI_BLOCK);
+        gaspi_reduce<T>(buffer_send, buffer_recv, buffer_temp, VLEN, op, threshold, root, queue_id, GASPI_BLOCK);
   
         time += now();
         t_median[itime] = time;
 
         if (iProc == root && checkRes) {    
-          check_evnt(VLEN, rcv_arr, threshold);
+          check(op, VLEN, rcv_arr, threshold);
         }
 
         //gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
@@ -246,9 +309,9 @@ int main(int argc, char** argv) {
   const int numIters = atoi(argv[2]);
   const bool checkRes = (argc==4)?true:false;
 
-  //test_reduce<double>(VLEN, numIters, checkRes); 
+  //test_reduce<double>(Operation::SUM, VLEN, numIters, checkRes); 
 
-  test_evnt_consist_reduce<double>(VLEN, numIters, checkRes); 
+  test_evnt_consist_reduce<double>(Operation::SUM, VLEN, numIters, checkRes); 
  
   SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
 

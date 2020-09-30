@@ -12,65 +12,13 @@
 #include "queue.h"
 #include "waitsome.h"
 
-template <typename T>
-void local_reduce_min(const unsigned int size, T const *input, T *output)
-{
-    for (unsigned int j = 0; j < size; j++) {
-        output[j] = MIN(input[j], output[j]);
-    }
-}
-
-template <typename T>
-void local_reduce_max(const unsigned int size, T const *input, T *output)
-{
-    for (unsigned int j = 0; j < size; j++) {
-        output[j] = MAX(input[j], output[j]);
-    }
-}
-
-template <typename T>
-void local_reduce_sum(const unsigned int size, T const *input, T *output)
-{
-    for (unsigned int j = 0; j < size; j++) {
-        output[j] += input[j];
-    }
-}
-
-/** 
- * Local reduce
- */
-template <typename T>
-void local_reduce(const Operation & op, const unsigned int size, T const *input, T *output)
-{
-    switch (op) {
-        case MIN: {
-            local_reduce_min<T>(size, input, output);
-            break;
-        }
-
-        case MAX: {
-            local_reduce_max<T>(size, input, output);
-            break;
-        }
-
-        case SUM: {
-            local_reduce_sum<T>(size, input, output);
-            break;
-        }
-
-        default: {
-            throw std::runtime_error ("[Allreduce] Unsupported Operation");
-        }
-    }
-}
-
 /** Segmented pipeline ring implementation
  *
  * @param buffer_send Segment with offset of the original data
  * @param buffer_receive Segment with offset of the reduced data
  * @param buffer_tmp Segment with offset of the temprorary part of data (~elem_cnt/nProc)
  * @param elem_cnt Number of data elements in the buffer
- * @param operation Type of operations (see gaspi_operation_t)
+ * @param operation The type of operations (MIN, MAX, SUM).
  * @param datatype Type of data (see gaspi_datatype_t)
  * @param queue_id Queue id
  * @param timeout Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST)

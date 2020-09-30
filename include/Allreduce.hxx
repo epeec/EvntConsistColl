@@ -4,14 +4,7 @@
 
 #include <GASPI.h>
 
-#include "DataStruct.hxx"
-
-/**
- * Easy to read operations. This is part of GASPI-CXX
- */
-enum Operation { SUM
-                , MAX
-                , MIN };
+#include "DataStructsAndOps.hxx"
 
 /** Segmented pipeline ring implementation
  *
@@ -19,7 +12,7 @@ enum Operation { SUM
  * @param buffer_receive Segment with offset of the reduced data
  * @param buffer_tmp Segment with offset of the temprorary part of data (~elem_cnt/nProc)
  * @param elem_cnt Number of data elements in the buffer
- * @param operation Type of operations (see gaspi_operation_t)
+ * @param operation The type of operations (MIN, MAX, SUM)
  * @param datatype Type of data (see gaspi_datatype_t)
  * @param queue_id Queue id
  * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST)
