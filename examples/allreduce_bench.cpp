@@ -15,7 +15,57 @@
 #include "now.h"
 
 template <typename T>
-void check(const int VLEN, const T* res) {
+void check_min(const int VLEN, const T* res) {
+    gaspi_rank_t iProc, nProc;
+    SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+    SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
+    
+    bool correct = true;
+
+    for (int i = 0; i < VLEN; i++) {
+        T resval = i + 1;
+        if (res[i] != resval) {
+            //std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
+            correct = false;
+        }
+    }
+
+    if (iProc == 0) {
+        if (correct) {
+    	    std::cout << "Successful run!\n";
+        } else { 
+    	    std::cout << "Check FAIL!\n";
+        }
+    }
+}
+
+template <typename T>
+void check_max(const int VLEN, const T* res) {
+    gaspi_rank_t iProc, nProc;
+    SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
+    SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
+    
+    bool correct = true;
+
+    for (int i = 0; i < VLEN; i++) {
+        T resval = i + nProc;
+        if (res[i] != resval) {
+            //std::cerr << i << ' ' << res[i] << ' ' << resval << '\n';
+            correct = false;
+        }
+    }
+
+    if (iProc == 0) {
+        if (correct) {
+    	    std::cout << "Successful run!\n";
+        } else { 
+    	    std::cout << "Check FAIL!\n";
+        }
+    }
+}
+
+template <typename T>
+void check_sum(const int VLEN, const T* res) {
     gaspi_rank_t iProc, nProc;
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
     SUCCESS_OR_DIE( gaspi_proc_num (&nProc) );
@@ -39,9 +89,33 @@ void check(const int VLEN, const T* res) {
     }
 }
 
+template <typename T>
+void check(const Operation &op, const int VLEN, const T* res) {
+    switch (op) {
+        case MIN: {
+            check_min<T>(VLEN, res);
+            break;
+        }
+
+        case MAX: {
+            check_max<T>(VLEN, res);
+            break;
+        }
+
+        case SUM: {
+            check_sum<T>(VLEN, res);
+            break;
+        }
+
+        default: {
+            throw std::runtime_error ("[Allreduce] Unsupported Operation");
+        }
+    }
+}
+
 // testing the gaspi pipelined ring allreduce
 template <typename T>
-void test_ring_allreduce(const int VLEN, const int numIters, const bool checkRes){
+void test_ring_allreduce(const Operation &op, const int VLEN, const int numIters, const bool checkRes){
   
     gaspi_rank_t iProc, nProc; 
     SUCCESS_OR_DIE( gaspi_proc_rank(&iProc) );
@@ -92,13 +166,13 @@ void test_ring_allreduce(const int VLEN, const int numIters, const bool checkRes
 
         double time = -now();
 
-        gaspi_ring_allreduce<T>(buffer_send, buffer_recv, buffer_temp, VLEN, Operation::SUM, queue_id, GASPI_BLOCK);
+        gaspi_ring_allreduce<T>(buffer_send, buffer_recv, buffer_temp, VLEN, op, queue_id, GASPI_BLOCK);
 
         time += now();
         t_median[iter] = time;
 
         if (checkRes) {    
-            check<T>(VLEN, rcv_arr);
+            check<T>(op, VLEN, rcv_arr);
         }
 
         //gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
@@ -133,7 +207,7 @@ int main(int argc, char** argv) {
 
     SUCCESS_OR_DIE( gaspi_proc_init(GASPI_BLOCK) );
 
-    test_ring_allreduce<double>(VLEN, numIters, checkRes); 
+    test_ring_allreduce<double>(Operation::SUM, VLEN, numIters, checkRes); 
 
     SUCCESS_OR_DIE( gaspi_proc_term(GASPI_BLOCK) );
 

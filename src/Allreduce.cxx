@@ -12,46 +12,55 @@
 #include "queue.h"
 #include "waitsome.h"
 
-/** 
- * Get GASPI operation. This is part of GASPI-CXX
- */
-gaspi_operation_t 
-getGaspiOperationT(Operation const & op)
+template <typename T>
+void local_reduce_min(const unsigned int size, T const *input, T *output)
 {
-    gaspi_operation_t ret;
-
-    switch (op) {
-        case MIN: {
-            ret = GASPI_OP_MIN;
-            break;
-        }
-
-        case MAX: {
-            ret = GASPI_OP_MAX;
-            break;
-        }
-
-        case SUM: {
-            ret = GASPI_OP_SUM;
-            break;
-        }
-
-        default: {
-            throw std::runtime_error ("[Allreduce] Unsupported Operation");
-        }
+    for (unsigned int j = 0; j < size; j++) {
+        output[j] = MIN(input[j], output[j]);
     }
+}
 
-    return ret;
+template <typename T>
+void local_reduce_max(const unsigned int size, T const *input, T *output)
+{
+    for (unsigned int j = 0; j < size; j++) {
+        output[j] = MAX(input[j], output[j]);
+    }
+}
+
+template <typename T>
+void local_reduce_sum(const unsigned int size, T const *input, T *output)
+{
+    for (unsigned int j = 0; j < size; j++) {
+        output[j] += input[j];
+    }
 }
 
 /** 
  * Local reduce
  */
 template <typename T>
-void local_reduce(const unsigned int size, T const *input, T *output)
+void local_reduce(const Operation & op, const unsigned int size, T const *input, T *output)
 {
-    for (unsigned int j = 0; j < size; j++) {
-        output[j] += input[j];
+    switch (op) {
+        case MIN: {
+            local_reduce_min<T>(size, input, output);
+            break;
+        }
+
+        case MAX: {
+            local_reduce_max<T>(size, input, output);
+            break;
+        }
+
+        case SUM: {
+            local_reduce_sum<T>(size, input, output);
+            break;
+        }
+
+        default: {
+            throw std::runtime_error ("[Allreduce] Unsupported Operation");
+        }
     }
 }
 
@@ -74,7 +83,7 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
                       segmentBuffer buffer_receive,
                       segmentBuffer buffer_tmp,
                       const gaspi_number_t elem_cnt,
-                      Operation const & op,
+                      const Operation & op,
                       const gaspi_queue_id_t queue_id,
                       const gaspi_timeout_t timeout)
 {
@@ -167,7 +176,7 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
         extra_offset = (i%2) * segment_sizes[recv_chunk] * type_size;
         buf_array = (T *)((char*)buf_arr + buffer_tmp.offset + extra_offset);
         segment_start = segment_ends[recv_chunk] - segment_sizes[recv_chunk];
-        local_reduce<T>(segment_sizes[recv_chunk], &buf_array[0], &rcv_array[segment_start]);
+        local_reduce<T>(op, segment_sizes[recv_chunk], &buf_array[0], &rcv_array[segment_start]);
 
         // ackowledge that the data has arrived
         gaspi_notification_id_t ack = i + recv_from + 1;
@@ -247,7 +256,7 @@ gaspi_ring_allreduce<double> (const segmentBuffer buffer_send,
                               segmentBuffer buffer_receive,
                               segmentBuffer buffer_tmp,
                               const gaspi_number_t elem_cnt,
-                              Operation const & op,
+                              const Operation & op,
                               const gaspi_queue_id_t queue_id,
                               const gaspi_timeout_t timeout);
 
@@ -256,7 +265,7 @@ gaspi_ring_allreduce<float> (const segmentBuffer buffer_send,
                               segmentBuffer buffer_receive,
                               segmentBuffer buffer_tmp,
                               const gaspi_number_t elem_cnt,
-                              Operation const & op,
+                              const Operation & op,
                               const gaspi_queue_id_t queue_id,
                               const gaspi_timeout_t timeout);
 
@@ -265,7 +274,7 @@ gaspi_ring_allreduce<int> (const segmentBuffer buffer_send,
                               segmentBuffer buffer_receive,
                               segmentBuffer buffer_tmp,
                               const gaspi_number_t elem_cnt,
-                              Operation const & op,
+                              const Operation & op,
                               const gaspi_queue_id_t queue_id,
                               const gaspi_timeout_t timeout);
 
@@ -274,6 +283,6 @@ gaspi_ring_allreduce<unsigned int> (const segmentBuffer buffer_send,
                               segmentBuffer buffer_receive,
                               segmentBuffer buffer_tmp,
                               const gaspi_number_t elem_cnt,
-                              Operation const & op,
+                              const Operation & op,
                               const gaspi_queue_id_t queue_id,
                               const gaspi_timeout_t timeout);

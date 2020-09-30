@@ -4,6 +4,9 @@
 
 #include <GASPI.h>
 
+#define MAX(a,b)  (((a)<(b)) ? (b) : (a))
+#define MIN(a,b)  (((a)>(b)) ? (b) : (a))
+
 // structure for segment and offset
 struct segmentBuffer {
     gaspi_segment_id_t segment;

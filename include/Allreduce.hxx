@@ -32,7 +32,7 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
                       segmentBuffer buffer_receive,
                       segmentBuffer buffer_tmp,
                       const gaspi_number_t elem_cnt,
-                      Operation const & op,
+                      const Operation & op,
                       const gaspi_queue_id_t queue_id,
                       const gaspi_timeout_t timeout);
 

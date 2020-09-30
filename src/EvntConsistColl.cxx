@@ -40,6 +40,8 @@ gaspi_bcast_simple (segmentBuffer const buffer,
     // type size
     int type_size = sizeof(T);
 
+    int segment_size = elem_cnt * type_size;
+
     gaspi_number_t doffset = buffer.offset * type_size;
   
     if (iProc == root) {	
@@ -49,7 +51,7 @@ gaspi_bcast_simple (segmentBuffer const buffer,
 
             gaspi_notification_id_t data_available = k;
             write_notify_and_wait( buffer.segment, doffset, k
-			          , buffer.segment, doffset, elem_cnt * type_size
+			          , buffer.segment, doffset, segment_size
 			          , data_available, k+1 // +1 so that the value is not zero
 			          , queue_id, timeout
 			);
@@ -108,6 +110,8 @@ gaspi_bcast_simple (segmentBuffer const buffer,
     // type size
     int type_size = sizeof(T);
 
+    int segment_size = ceil(elem_cnt * threshold) * type_size;
+
     gaspi_number_t doffset = buffer.offset * type_size;
  
     if (iProc == root) {	
@@ -117,7 +121,7 @@ gaspi_bcast_simple (segmentBuffer const buffer,
 
             gaspi_notification_id_t data_available = k;
 			write_notify_and_wait( buffer.segment, doffset, k
-			        , buffer.segment, doffset, ceil(elem_cnt * threshold) * type_size
+			        , buffer.segment, doffset, segment_size
 			        , data_available, root+1 // +1 so that the value is not zero
 			        , queue_id, timeout
 			);
