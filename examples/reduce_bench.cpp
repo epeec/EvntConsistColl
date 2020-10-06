@@ -154,14 +154,13 @@ void test_reduce(const Operation &op, const int VLEN, const int numIters, const 
 
   SUCCESS_OR_DIE
     ( gaspi_segment_create
-      ( segment_recv_id, 2 * segment_size
+      ( segment_recv_id, segment_size
       , GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_INITIALIZED
       )
     );
 
   segmentBuffer buffer_send = {segment_send_id, 0};    
   segmentBuffer buffer_recv = {segment_recv_id, 0};    
-  segmentBuffer buffer_temp = {segment_recv_id, segment_size}; // large offset because buffer_temp is within the same segment   
   
   gaspi_pointer_t send_array, recv_array;
   SUCCESS_OR_DIE( gaspi_segment_ptr (segment_send_id, &send_array) );
@@ -183,7 +182,7 @@ void test_reduce(const Operation &op, const int VLEN, const int numIters, const 
 
     double time = -now();
 
-    gaspi_reduce<T>(buffer_send, buffer_recv, buffer_temp, VLEN, op, root, queue_id, GASPI_BLOCK);
+    gaspi_reduce<T>(buffer_send, buffer_recv, VLEN, op, root, queue_id, GASPI_BLOCK);
 
     time += now();
     t_median[itime] = time;
@@ -200,6 +199,9 @@ void test_reduce(const Operation &op, const int VLEN, const int numIters, const 
   if (iProc == root) {
     printf("%10.6f \n", t_median[numIters/2]);
   }
+
+  SUCCESS_OR_DIE( gaspi_segment_delete(segment_send_id) );
+  SUCCESS_OR_DIE( gaspi_segment_delete(segment_recv_id) );
   
   wait_for_flush_queues();
 }
@@ -217,8 +219,8 @@ void test_evnt_consist_reduce(const Operation &op, const int VLEN, const int num
   gaspi_rank_t root = 0;
   gaspi_queue_id_t queue_id = 0;
 
-  gaspi_segment_id_t const segment_send_id = 2;
-  gaspi_segment_id_t const segment_recv_id = 3;
+  gaspi_segment_id_t const segment_send_id = 0;
+  gaspi_segment_id_t const segment_recv_id = 1;
   gaspi_size_t       const segment_size = VLEN * type_size;
 
   SUCCESS_OR_DIE
@@ -230,14 +232,13 @@ void test_evnt_consist_reduce(const Operation &op, const int VLEN, const int num
 
   SUCCESS_OR_DIE
     ( gaspi_segment_create
-      ( segment_recv_id, 2 * segment_size
+      ( segment_recv_id, segment_size
       , GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_INITIALIZED
       )
     );
 
   segmentBuffer buffer_send = {segment_send_id, 0};    
   segmentBuffer buffer_recv = {segment_recv_id, 0};    
-  segmentBuffer buffer_temp = {segment_recv_id, segment_size}; // large offset because buffer_temp is within the same segment   
     
   gaspi_pointer_t send_array, recv_array;
   SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_send.segment, &send_array) );
@@ -263,7 +264,7 @@ void test_evnt_consist_reduce(const Operation &op, const int VLEN, const int num
 
         double time = -now();
 
-        gaspi_reduce<T>(buffer_send, buffer_recv, buffer_temp, VLEN, op, threshold, root, queue_id, GASPI_BLOCK);
+        gaspi_reduce<T>(buffer_send, buffer_recv, VLEN, op, threshold, root, queue_id, GASPI_BLOCK);
   
         time += now();
         t_median[itime] = time;
@@ -289,6 +290,9 @@ void test_evnt_consist_reduce(const Operation &op, const int VLEN, const int num
   if (iProc == 0) {
     printf("\n");
   }
+
+  SUCCESS_OR_DIE( gaspi_segment_delete(segment_send_id) );
+  SUCCESS_OR_DIE( gaspi_segment_delete(segment_recv_id) );
 
   wait_for_flush_queues();
 }

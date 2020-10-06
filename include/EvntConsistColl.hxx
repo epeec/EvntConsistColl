@@ -87,7 +87,6 @@ gaspi_bcast (segmentBuffer const buffer,
  *
  * @param buffer_send Segment with offset of the original data
  * @param buffer_receive Segment with offset of the reduced data
- * @param buffer_tmp Segment with offset of the temprorary part of data (~elem_cnt/nProc)
  * @param operation The type of operations (MIN, MAX, SUM)
  * @param root The process id of the root
  * @param queue_id The queue id
@@ -99,7 +98,6 @@ gaspi_bcast (segmentBuffer const buffer,
 template <typename T> gaspi_return_t 
 gaspi_reduce (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
-   	          segmentBuffer buffer_tmp,
               const gaspi_number_t elem_cnt,
               const Operation & op,
               const gaspi_number_t root,
@@ -110,7 +108,6 @@ gaspi_reduce (const segmentBuffer buffer_send,
  *
  * @param buffer_send Segment with offset of the original data
  * @param buffer_receive Segment with offset of the reduced data
- * @param buffer_tmp Segment with offset of the temprorary part of data (~elem_cnt/nProc)
  * @param elem_cnt The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
  * @param operation The type of operations (MIN, MAX, SUM)
  * @param threshold The threshol for the amount of data to be reduced. The value is in [0, 1]
@@ -124,7 +121,6 @@ gaspi_reduce (const segmentBuffer buffer_send,
 template <typename T> gaspi_return_t 
 gaspi_reduce (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
-   	          segmentBuffer buffer_tmp,
               const gaspi_number_t elem_cnt,
               const Operation & op,
               const gaspi_double threshold,

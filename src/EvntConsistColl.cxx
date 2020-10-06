@@ -351,7 +351,6 @@ gaspi_bcast (segmentBuffer const buffer,
  *
  * @param buffer_send Segment with offset of the original data
  * @param buffer_receive Segment with offset of the reduced data
- * @param buffer_tmp Segment with offset of the temprorary part of data (~elem_cnt/nProc)
  * @param elem_cnt The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
  * @param operation The type of operations (MIN, MAX, SUM)
  * @param root The process id of the root
@@ -365,7 +364,6 @@ gaspi_bcast (segmentBuffer const buffer,
 template <typename T> gaspi_return_t 
 gaspi_reduce (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
-   	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
               const Operation & op,
 	          const gaspi_number_t root,
@@ -408,16 +406,22 @@ gaspi_reduce (const segmentBuffer buffer_send,
     bst.children_count = children_count;
 
     // auxiliary pointers
-    gaspi_pointer_t src_array, rcv_array, buf_array;
+    gaspi_pointer_t src_array, rcv_array;
     SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_send.segment, &src_array) );
     SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_receive.segment, &rcv_array) );
-    SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_tmp.segment, &buf_array) );
     T *src_arr = (T *)((char*)src_array + buffer_send.offset);
     T *rcv_arr = (T *)((char*)rcv_array + buffer_receive.offset);
-    T *buf_arr = (T *)((char*)buf_array + buffer_tmp.offset);
 
+    // add temporary buffer
+    T *tmp_arr = NULL;
+    
     // Copy the data to the output buffer to avoid modifying the input buffer
-    std::memcpy((void*) rcv_arr, (void*) src_arr, segment_size);
+    if (!children_count)
+        std::memcpy((void*) rcv_arr, (void*) src_arr, segment_size);
+    else {
+        tmp_arr = (T *) malloc(segment_size);
+        std::memcpy((void*) tmp_arr, (void*) src_arr, segment_size);
+    }
 
     // actual reduction
     for (int i = upper_bound - 1; i >= 0; i--) {
@@ -426,35 +430,38 @@ gaspi_reduce (const segmentBuffer buffer_send,
             // wait for notification that the data can be sent
             gaspi_rank_t rank = iProc * nProc + bst.parent;
             gaspi_notification_id_t id = rank;
-            wait_or_die( buffer_receive.segment, id, rank );
+            wait_or_die( buffer_send.segment, id, rank );
 
-            // send the data to the parent
+            // write the data to the parent
             gaspi_notification_id_t data_available = iProc;
             write_notify_and_wait( buffer_receive.segment, buffer_receive.offset, bst.parent
-                    , buffer_tmp.segment, buffer_tmp.offset, segment_size
+                    , buffer_receive.segment, buffer_receive.offset, segment_size
                     , data_available, bst.parent + 1 // +1 so that the value is not zero
                     , queue_id, timeout
             );
             
             // wait for acknowledgement notification
             gaspi_notification_id_t ack = bst.parent + 1;
-            wait_or_die( buffer_receive.segment, ack, bst.parent + 1 );  
+            wait_or_die( buffer_send.segment, ack, bst.parent + 1 );  
 
             bst.isactive = false;
+
+            if (tmp_arr)
+                free(tmp_arr);
 
         } else if (bst.isactive && (pow2i > iProc) && ((iProc + pow2i) < nProc)) {
 
             // need to send notification that the parent is ready to receive the data
             gaspi_rank_t rank = bst.children[children_count-1] * nProc + iProc;        
             gaspi_notification_id_t id = rank;
-            notify_and_wait(buffer_receive.segment
+            notify_and_wait(buffer_send.segment
                     , bst.children[children_count-1], id, rank
                     , queue_id, timeout
             );
         
             // receive data
             gaspi_notification_t val;
-            waitsome_and_reset(buffer_tmp.segment
+            waitsome_and_reset(buffer_receive.segment
                 , bst.children[0], nProc - bst.children[0]
                 , &id, &val
             );
@@ -462,16 +469,20 @@ gaspi_reduce (const segmentBuffer buffer_send,
             ASSERT(id <= bst.children[bst.children_count-1]);
 
             // local reduce
-            local_reduce<T>(op, elem_cnt, &buf_arr[0], &rcv_arr[0]);
+            local_reduce<T>(op, elem_cnt, &rcv_arr[0], &tmp_arr[0]);
 
             // ackowledge child that the data has arrived
             gaspi_notification_id_t ack = iProc + 1;
-            notify_and_wait(buffer_receive.segment
+            notify_and_wait(buffer_send.segment
                     , bst.children[children_count - 1], ack, iProc + 1
                     , queue_id, timeout
             );
 
             children_count--;
+
+            // copy results to the receive buffer
+            if (!children_count)
+                std::memcpy((void*) rcv_arr, (void*) tmp_arr, segment_size);
         }
     }
 
@@ -482,7 +493,6 @@ gaspi_reduce (const segmentBuffer buffer_send,
  *
  * @param buffer_send Segment with offset of the original data
  * @param buffer_receive Segment with offset of the reduced data
- * @param buffer_tmp Segment with offset of the temprorary part of data (~elem_cnt/nProc)
  * @param elem_cnt The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
  * @param operation The type of operations (MIN, MAX, SUM)
  * @param threshold The threshold for the amount of data to be reduced. The value is in [0, 1]
@@ -497,7 +507,6 @@ gaspi_reduce (const segmentBuffer buffer_send,
 template <typename T> gaspi_return_t 
 gaspi_reduce (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
-   	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
               const Operation & op,
               const gaspi_double threshold,
@@ -542,16 +551,22 @@ gaspi_reduce (const segmentBuffer buffer_send,
     bst.children_count = children_count;
 
     // auxiliary pointers
-    gaspi_pointer_t src_array, rcv_array, buf_array;
+    gaspi_pointer_t src_array, rcv_array;
     SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_send.segment, &src_array) );
     SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_receive.segment, &rcv_array) );
-    SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_tmp.segment, &buf_array) );
     T *src_arr = (T *)((char*)src_array + buffer_send.offset);
     T *rcv_arr = (T *)((char*)rcv_array + buffer_receive.offset);
-    T *buf_arr = (T *)((char*)buf_array + buffer_tmp.offset);
+
+    // add temporary buffer
+    T *tmp_arr = NULL;
 
     // Copy the data to the output buffer to avoid modifying the input buffer
-    std::memcpy((void*) rcv_arr, (void*) src_arr, segment_size);
+    if (!children_count)
+        std::memcpy((void*) rcv_arr, (void*) src_arr, segment_size);
+    else {
+        tmp_arr = (T *) malloc(segment_size);
+        std::memcpy((void*) tmp_arr, (void*) src_arr, segment_size);
+    }
 
     // actual reduction
     for (int i = upper_bound - 1; i >= 0; i--) {
@@ -560,35 +575,38 @@ gaspi_reduce (const segmentBuffer buffer_send,
             // wait for notification that the data can be sent
             gaspi_rank_t rank = iProc * nProc + bst.parent;
             gaspi_notification_id_t id = rank;
-            wait_or_die( buffer_receive.segment, id, rank );
+            wait_or_die( buffer_send.segment, id, rank );
 
-            // send the data to the parent
+            // write the data to the parent
             gaspi_notification_id_t data_available = iProc;
             write_notify_and_wait( buffer_receive.segment, buffer_receive.offset, bst.parent
-                    , buffer_tmp.segment, buffer_tmp.offset, segment_size
+                    , buffer_receive.segment, buffer_receive.offset, segment_size
                     , data_available, bst.parent + 1 // +1 so that the value is not zero
                     , queue_id, timeout
             );
             
             // wait for acknowledgement notification
             gaspi_notification_id_t ack = bst.parent + 1;
-            wait_or_die( buffer_receive.segment, ack, bst.parent + 1 );  
+            wait_or_die( buffer_send.segment, ack, bst.parent + 1 );  
 
             bst.isactive = false;
+
+            if (tmp_arr)
+                free(tmp_arr);
 
         } else if (bst.isactive && (pow2i > iProc) && ((iProc + pow2i) < nProc)) {
 
             // need to send notification that the parent is ready to receive the data
             gaspi_rank_t rank = bst.children[children_count-1] * nProc + iProc;        
             gaspi_notification_id_t id = rank;
-            notify_and_wait(buffer_receive.segment
+            notify_and_wait(buffer_send.segment
                     , bst.children[children_count-1], id, rank
                     , queue_id, timeout
             );
         
             // receive data
             gaspi_notification_t val;
-            waitsome_and_reset(buffer_tmp.segment
+            waitsome_and_reset(buffer_receive.segment
                 , bst.children[0], nProc - bst.children[0]
                 , &id, &val
             );
@@ -596,16 +614,20 @@ gaspi_reduce (const segmentBuffer buffer_send,
             ASSERT(id <= bst.children[bst.children_count-1]);
 
             // local reduce
-            local_reduce<T>(op, elem_cnt, &buf_arr[0], &rcv_arr[0]);
+            local_reduce<T>(op, num_elem, &rcv_arr[0], &tmp_arr[0]);
 
             // ackowledge child that the data has arrived
             gaspi_notification_id_t ack = iProc + 1;
-            notify_and_wait(buffer_receive.segment
+            notify_and_wait(buffer_send.segment
                     , bst.children[children_count - 1], ack, iProc + 1
                     , queue_id, timeout
             );
 
             children_count--;
+
+            // copy results to the receive buffer
+            if (!children_count)
+                std::memcpy((void*) rcv_arr, (void*) tmp_arr, segment_size);
         }
     }
 
@@ -741,7 +763,6 @@ gaspi_bcast_simple<unsigned int> (segmentBuffer buffer,
 template gaspi_return_t 
 gaspi_reduce<double> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
-   	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
               const Operation & op,
               const gaspi_double threshold,
@@ -752,7 +773,6 @@ gaspi_reduce<double> (const segmentBuffer buffer_send,
 template gaspi_return_t 
 gaspi_reduce<float> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
-   	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
               const Operation & op,
               const gaspi_double threshold,
@@ -763,7 +783,6 @@ gaspi_reduce<float> (const segmentBuffer buffer_send,
 template gaspi_return_t 
 gaspi_reduce<int> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
-   	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
               const Operation & op,
               const gaspi_double threshold,
@@ -774,7 +793,6 @@ gaspi_reduce<int> (const segmentBuffer buffer_send,
 template gaspi_return_t 
 gaspi_reduce<unsigned int> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
-   	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
               const Operation & op,
               const gaspi_double threshold,
@@ -786,7 +804,6 @@ gaspi_reduce<unsigned int> (const segmentBuffer buffer_send,
 template gaspi_return_t 
 gaspi_reduce<double> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
-   	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
               const Operation & op,
 	          const gaspi_number_t root,
@@ -796,7 +813,6 @@ gaspi_reduce<double> (const segmentBuffer buffer_send,
 template gaspi_return_t 
 gaspi_reduce<float> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
-   	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
               const Operation & op,
 	          const gaspi_number_t root,
@@ -806,7 +822,6 @@ gaspi_reduce<float> (const segmentBuffer buffer_send,
 template gaspi_return_t 
 gaspi_reduce<int> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
-   	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
               const Operation & op,
 	          const gaspi_number_t root,
@@ -816,7 +831,6 @@ gaspi_reduce<int> (const segmentBuffer buffer_send,
 template gaspi_return_t 
 gaspi_reduce<unsigned int> (const segmentBuffer buffer_send,
    	          segmentBuffer buffer_receive,
-   	          segmentBuffer buffer_tmp,
 	          const gaspi_number_t elem_cnt,
               const Operation & op,
 	          const gaspi_number_t root,
