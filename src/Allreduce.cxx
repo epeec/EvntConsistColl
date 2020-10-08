@@ -16,7 +16,6 @@
  *
  * @param buffer_send Segment with offset of the original data
  * @param buffer_receive Segment with offset of the reduced data
- * @param buffer_tmp Segment with offset of the temprorary part of data (~elem_cnt/nProc)
  * @param elem_cnt Number of data elements in the buffer
  * @param operation The type of operations (MIN, MAX, SUM).
  * @param datatype Type of data (see gaspi_datatype_t)
@@ -29,7 +28,6 @@
 template <typename T> gaspi_return_t 
 gaspi_ring_allreduce (const segmentBuffer buffer_send,
                       segmentBuffer buffer_receive,
-                      segmentBuffer buffer_tmp,
                       const gaspi_number_t elem_cnt,
                       const Operation & op,
                       const gaspi_queue_id_t queue_id,
@@ -72,15 +70,10 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
     // Copy the data to the output buffer to avoid modifying the input buffer
     std::memcpy((void*) rcv_array, (void*) src_array, elem_cnt * type_size);
 
-    // Allocate a temporary buffer to store incoming data
-    gaspi_pointer_t buf_arr;
-    SUCCESS_OR_DIE( gaspi_segment_ptr (buffer_tmp.segment, &buf_arr) );
-    T *buf_array = (T *)((char*)buf_arr + buffer_tmp.offset);
-
     // Receive from left neighbor
     const int recv_from = (iProc - 1 + nProc) % nProc;
 
-    // Send to right neigbor
+    // Send to right neighbor
     const int send_to = (iProc + 1) % nProc;
 
     // scatter-reduce phase
@@ -107,10 +100,9 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
         // write data
         int segment_start = segment_ends[send_chunk] - segment_sizes[send_chunk];
         gaspi_notification_id_t data = iProc * nProc + send_to + i; 
-        int extra_offset = (i%2) * segment_sizes[send_chunk] * type_size;
         write_notify_and_wait(buffer_receive.segment
                 , buffer_receive.offset + segment_start * type_size // offset
-                , send_to, buffer_tmp.segment, buffer_tmp.offset + extra_offset // offset
+                , send_to, buffer_receive.segment, buffer_receive.offset + segment_start * type_size // offset
                 , segment_sizes[send_chunk] * type_size, data
                 , i + iProc + 1 // notification value: +1 to avoid 0. It equals to recvfrom + 1 on receiver side
                 , queue_id, GASPI_BLOCK
@@ -118,13 +110,11 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
 
         // wait for notification that the data has arrived
         gaspi_notification_id_t data_arr = recv_from * nProc + iProc + i;
-        wait_or_die( buffer_tmp.segment, data_arr, i + recv_from + 1 );  
+        wait_or_die( buffer_receive.segment, data_arr, i + recv_from + 1 );  
 
         // local reduce
-        extra_offset = (i%2) * segment_sizes[recv_chunk] * type_size;
-        buf_array = (T *)((char*)buf_arr + buffer_tmp.offset + extra_offset);
         segment_start = segment_ends[recv_chunk] - segment_sizes[recv_chunk];
-        local_reduce<T>(op, segment_sizes[recv_chunk], &buf_array[0], &rcv_array[segment_start]);
+        local_reduce<T>(op, segment_sizes[recv_chunk], &src_array[segment_start], &rcv_array[segment_start]);
 
         // ackowledge that the data has arrived
         gaspi_notification_id_t ack = i + recv_from + 1;
@@ -146,7 +136,6 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
     for (int i = 0; i < nProc-1; i++) {
         
         int send_chunk = (iProc - i + 1 + nProc) % nProc;
-        int recv_chunk = (iProc - i + nProc) % nProc;
         
         // ready to receive
         gaspi_notification_id_t ready = iProc + i;
@@ -162,10 +151,9 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
         // write data 
         int segment_start = segment_ends[send_chunk] - segment_sizes[send_chunk];
         gaspi_notification_id_t data = iProc * nProc + send_to + i; 
-        int extra_offset = (i%2) * segment_sizes[send_chunk] * type_size;
         write_notify_and_wait(buffer_receive.segment
                 , buffer_receive.offset + segment_start * type_size // offset
-                , send_to, buffer_tmp.segment, buffer_tmp.offset + extra_offset // offset 
+                , send_to, buffer_receive.segment, buffer_receive.offset + segment_start * type_size // offset 
                 , segment_sizes[send_chunk] * type_size, data
                 , i + iProc + 1 // notification value: +1 to avoid 0. It equals to recvfrom + 1 on receiver side
                 , queue_id, GASPI_BLOCK
@@ -173,15 +161,7 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
 
         // wait for notification that the data has arrived
         gaspi_notification_id_t data_arr = recv_from * nProc + iProc + i;
-        wait_or_die( buffer_tmp.segment, data_arr, i + recv_from + 1 );  
-
-        // copy
-        extra_offset = (i%2) * segment_sizes[recv_chunk] * type_size;
-        buf_array = (T *)((char*)buf_arr + buffer_tmp.offset + extra_offset);
-        segment_start = segment_ends[recv_chunk] - segment_sizes[recv_chunk];
-        for (unsigned int j = 0; j < segment_sizes[recv_chunk]; j++) {
-            rcv_array[segment_start + j] = buf_array[j];           
-        }         
+        wait_or_die( buffer_receive.segment, data_arr, i + recv_from + 1 );  
 
         // ackowledge that the data has arrived
         gaspi_notification_id_t ack = i + recv_from + 1;
@@ -202,7 +182,6 @@ gaspi_ring_allreduce (const segmentBuffer buffer_send,
 template gaspi_return_t 
 gaspi_ring_allreduce<double> (const segmentBuffer buffer_send,
                               segmentBuffer buffer_receive,
-                              segmentBuffer buffer_tmp,
                               const gaspi_number_t elem_cnt,
                               const Operation & op,
                               const gaspi_queue_id_t queue_id,
@@ -211,7 +190,6 @@ gaspi_ring_allreduce<double> (const segmentBuffer buffer_send,
 template gaspi_return_t 
 gaspi_ring_allreduce<float> (const segmentBuffer buffer_send,
                               segmentBuffer buffer_receive,
-                              segmentBuffer buffer_tmp,
                               const gaspi_number_t elem_cnt,
                               const Operation & op,
                               const gaspi_queue_id_t queue_id,
@@ -220,7 +198,6 @@ gaspi_ring_allreduce<float> (const segmentBuffer buffer_send,
 template gaspi_return_t 
 gaspi_ring_allreduce<int> (const segmentBuffer buffer_send,
                               segmentBuffer buffer_receive,
-                              segmentBuffer buffer_tmp,
                               const gaspi_number_t elem_cnt,
                               const Operation & op,
                               const gaspi_queue_id_t queue_id,
@@ -229,7 +206,6 @@ gaspi_ring_allreduce<int> (const segmentBuffer buffer_send,
 template gaspi_return_t 
 gaspi_ring_allreduce<unsigned int> (const segmentBuffer buffer_send,
                               segmentBuffer buffer_receive,
-                              segmentBuffer buffer_tmp,
                               const gaspi_number_t elem_cnt,
                               const Operation & op,
                               const gaspi_queue_id_t queue_id,

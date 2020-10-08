@@ -23,7 +23,6 @@
 template <typename T> gaspi_return_t 
 gaspi_ring_allreduce (const segmentBuffer buffer_send,
                       segmentBuffer buffer_receive,
-                      segmentBuffer buffer_tmp,
                       const gaspi_number_t elem_cnt,
                       const Operation & op,
                       const gaspi_queue_id_t queue_id,
